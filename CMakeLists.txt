@@ -216,6 +216,8 @@ if(SIRIUS_USE_MEMORY_POOL)
   find_package(umpire REQUIRED)
 endif()
 
+find_package(fmt REQUIRED)
+
 # check if git command exists
 find_program(GIT_EXE NAMES git)
 

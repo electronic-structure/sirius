@@ -145,6 +145,7 @@ class Sirius(CMakePackage, CudaPackage, ROCmPackage):
     depends_on("py-mpi4py", when="+python", type=("build", "run"))
     depends_on("py-voluptuous", when="+python", type=("build", "run"))
     depends_on("py-pybind11", when="+python", type=("build", "run"))
+    depends_on("fmt", when="@7.6.3:")
     extends("python", when="+python")
 
     depends_on("magma", when="+magma")

@@ -108,6 +108,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   sirius::libspg
   sirius::hdf5
   costa::costa
+  fmt::fmt
   $<TARGET_NAME_IF_EXISTS:sirius::elpa>
   $<$<BOOL:${SIRIUS_USE_DLAF}>:DLAF::DLAF>
   $<TARGET_NAME_IF_EXISTS:sirius::magma>
