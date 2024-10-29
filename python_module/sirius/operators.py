@@ -36,12 +36,12 @@ class S_operator(KpointOperatorBase):
         """"""
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
 
         n = self.ops[key].size
         return LinearOperator(
@@ -71,12 +71,12 @@ class Sinv_operator(KpointOperatorBase):
     def apply(self, cn):
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
 
         n = self.ops[key].size
         return LinearOperator(
@@ -108,12 +108,12 @@ class US_Precond(KpointOperatorBase):
     def apply(self, cn):
         out = type(cn)()
         for key in cn.keys():
-            out[key] = np.array(self.ops[key].apply(np.asfortranarray(cn[key])))
+            out[key] = np.asarray(self.ops[key].apply(np.asfortranarray(cn[key])))
         return out
 
     def __getitem__(self, key):
         def _matvec(X):
-            return np.array(self.ops[key].apply(np.asfortranarray(X)))
+            return np.asarray(self.ops[key].apply(np.asfortranarray(X)))
 
         n = self.ops[key].size
         return LinearOperator(
