@@ -26,6 +26,7 @@ UseTab: Never
 AllowShortFunctionsOnASingleLine: 'None'
 AllowShortIfStatementsOnASingleLine : 'false'
 AllowShortLoopsOnASingleLine: 'false'
+AllowShortLambdasOnASingleLine: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
 AlwaysBreakTemplateDeclarations: 'Yes'
 PointerAlignment: Left
@@ -39,7 +40,6 @@ MaxEmptyLinesToKeep: 1
 BreakConstructorInitializersBeforeComma: 'true'
 ConstructorInitializerIndentWidth: 4
 Cpp11BracedListStyle: 'true'
-
 AlwaysBreakAfterReturnType: All
 #AlwaysBreakAfterReturnType: 'TopLevelDefinitions'
 
