@@ -1197,7 +1197,7 @@ class Enu_finder : public Radial_solver
                                              return true;
                                          }
                                          if (denu <= 1.0) {
-                                            denu *= 4;
+                                             denu *= 4;
                                          }
                                          enu += s * denu;
                                          return false;
@@ -1246,15 +1246,15 @@ class Enu_finder : public Radial_solver
                                          }
                                          /* do not allow step in energy to grow too much */
                                          if (denu <= 1.0) {
-                                            denu *= 1.5;
+                                             denu *= 1.5;
                                          }
                                          enu -= denu;
                                          return false;
                                      });
 
         /* refine bottom energy */
-        e1 = e0;
-        e2 = e0 + denu;
+        e1    = e0;
+        e2    = e0 + denu;
         ebot_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr, false,
                                         [&e1, &e2, sd, &surface_deriv, this](int iter, int nn, double& enu) {
                                             if (surface_deriv() * sd > 0) {
