@@ -14,6 +14,7 @@
 #include "symmetry/get_irreducible_reciprocal_mesh.hpp"
 #include <iomanip>
 #include "core/expected.hpp"
+#include "newton_minimization.hpp"
 
 namespace sirius {
 
@@ -197,94 +198,6 @@ bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
     return x;
 }
 
-/**
- *  Newton minimization to determine the chemical potential.
- *
- *  \param  N       number of electrons as a function of \f$\mu\f$
- *  \param  dN      \f$\partial_\mu N(\mu)\f$
- *  \param  ddN     \f$\partial^2_\mu N(\mu)\f$
- *  \param  mu0     initial guess
- *  \param  ne      target number of electrons
- *  \param  tol     tolerance
- *  \param  maxstep max number of Newton iterations
- */
-template <class Nt, class DNt, class D2Nt>
-auto
-newton_minimization_chemical_potential(Nt&& N, DNt&& dN, D2Nt&& ddN, double mu0, double ne, double tol,
-                                       int maxstep = 1000)
-{
-    // Newton finds the minimum, not necessarily N(mu) == ne, tolerate up to `tol_ne` difference in number of electrons
-    // if |N(mu_0) -ne| > tol_ne an error is thrown.
-    const double tol_ne = 1e-10;
-
-    struct
-    {
-        double mu;              // chemical potential
-        int iter{0};            // newton information
-        double ne_diff;
-        std::vector<double> ys; // newton history
-    } res;
-
-    double mu = mu0;
-    double alpha{1.0}; // Newton damping
-    int iter{0};
-
-    if (std::abs(N(mu) - ne) < tol) {
-        res.mu   = mu;
-        res.iter = iter;
-        res.ys   = {};
-        return res;
-    }
-
-    while (true) {
-        // compute
-        double Nf   = N(mu);
-        double dNf  = dN(mu);
-        double ddNf = ddN(mu);
-        /* minimize (N(mu) - ne)^2  */
-        // double F = (Nf - ne) * (Nf - ne);
-        double dF   = 2 * (Nf - ne) * dNf;
-        double ddF  = 2 * dNf * dNf + 2 * (Nf - ne) * ddNf;
-        double step = alpha * dF / std::abs(ddF);
-        mu          = mu - step;
-
-        res.ys.push_back(mu);
-
-        if (std::abs(ddF) < 1e-30) {
-            std::stringstream s;
-            s << "Newton minimization (Fermi energy) failed because 2nd derivative too close to zero!"
-              << std::setprecision(8) << std::abs(Nf - ne) << "\n";
-            RTE_THROW(s);
-        }
-
-        double ne_diff = std::abs(Nf - ne);
-        if (std::abs(step) < tol || ne_diff < tol)
-        {
-            if (ne_diff > tol_ne) {
-                std::stringstream s;
-                s << "Newton minimization (Fermi energy) got stuck in a local minimum. Fallback to bisection search."
-                  << "\n";
-                RTE_THROW(s);
-            }
-
-            res.iter = iter;
-            res.mu   = mu;
-            res.ne_diff = ne_diff;
-            return res;
-        }
-
-        iter++;
-        if (iter > maxstep) {
-            std::stringstream s;
-            s << "Newton minimization (chemical potential) failed after " << maxstep << " steps!" << std::endl
-              << "target number of electrons : " << ne << std::endl
-              << "initial guess for chemical potential : " << mu0 << std::endl
-              << "current value of chemical potential : " << mu;
-            RTE_THROW(s);
-        }
-    }
-}
-
 template <typename T>
 void
 K_point_set::find_band_occupancies()
@@ -377,44 +290,43 @@ K_point_set::find_band_occupancies()
         f = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
     }
 
-    try {
-        auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-        // energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
-        auto res_bisection = bisection_search(F, emin, emax, 1e-11);
-        if (!res_bisection) {
-          RTE_THROW(res_bisection.error());
-        }
-        this->energy_fermi_ = res_bisection.value();
-
-        /* for cold and Methfessel Paxton smearing start newton minimization  */
-        if (ctx_.smearing() == smearing::smearing_t::cold ||
-            ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
-            f               = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-            auto df         = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
-            auto ddf        = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
-            auto N          = [&](double mu) { return compute_ne(mu, f); };
-            auto dN         = [&](double mu) { return compute_ne(mu, df); };
-            auto ddN        = [&](double mu) { return compute_ne(mu, ddf); };
-            auto res_newton = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
-            energy_fermi_   = res_newton.mu;
-            if (ctx_.verbosity() >= 2) {
-                RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.iter << " steps\n";
-                RTE_OUT(ctx_.out()) << "newton iteration ne_diff " << res_newton.ne_diff << " steps\n";
-            }
-        }
-    } catch (std::exception const& e) {
-        if (ctx_.verbosity() >= 2) {
-            RTE_OUT(ctx_.out()) << e.what() << std::endl << "fallback to bisection search" << std::endl;
-        }
-        f             = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
-        auto F        = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
-        auto res_bisection = bisection_search(F, emin, emax, tol);
-        if(!res_bisection) {
-          RTE_THROW(res_bisection.error());
-        }
-        this->energy_fermi_ = res_bisection.value();
+    auto F = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+    // energy_fermi_ = bisection_search(F, emin, emax, 1e-11);
+    auto res_bisection = bisection_search(F, emin, emax, 1e-11);
+    if (!res_bisection) {
+        RTE_THROW(res_bisection.error());
     }
+    this->energy_fermi_ = res_bisection.value();
 
+    /* for cold and Methfessel Paxton smearing start newton minimization  */
+    if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
+        f               = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+        auto df         = smearing::delta(ctx_.smearing(), ctx_.smearing_width());
+        auto ddf        = smearing::dxdelta(ctx_.smearing(), ctx_.smearing_width());
+        auto N          = [&](double mu) { return compute_ne(mu, f); };
+        auto dN         = [&](double mu) { return compute_ne(mu, df); };
+        auto ddN        = [&](double mu) { return compute_ne(mu, ddf); };
+        auto res_newton = newton_minimization_chemical_potential(N, dN, ddN, energy_fermi_, ne_target, tol, 1000);
+        if (res_newton) {
+            energy_fermi_ = res_newton.value().mu;
+            if (ctx_.verbosity() >= 2) {
+                RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.value().iter << " steps\n";
+                RTE_OUT(ctx_.out()) << "newton iteration ne_diff " << res_newton.value().ne_diff << " steps\n";
+            }
+        } else {
+            // Newton has failed, fallback to bisection
+            if (ctx_.verbosity() >= 2) {
+                RTE_OUT(ctx_.out()) << res_newton.error() << std::endl << "fallback to bisection search" << std::endl;
+            }
+            f                  = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
+            auto F             = [&compute_ne, ne_target, &f](double x) { return compute_ne(x, f) - ne_target; };
+            auto res_bisection = bisection_search(F, emin, emax, tol);
+            if (!res_bisection) {
+                RTE_THROW(res_bisection.error());
+            }
+            this->energy_fermi_ = res_bisection.value();
+        }
+    }
     for (auto it : spl_num_kpoints_) {
         for (int ispn = 0; ispn < ctx_.num_spinors(); ispn++) {
             #pragma omp parallel for
