@@ -6580,11 +6580,11 @@ sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
 {
     call_sirius(
             [&]() {
-                auto& gs = get_gs(gs_handler__);
-                int ia   = *ia__ - 1;
-                auto& atom = gs.ctx().unit_cell().atom(ia);
+                auto& gs     = get_gs(gs_handler__);
+                int ia       = *ia__ - 1;
+                auto& atom   = gs.ctx().unit_cell().atom(ia);
                 auto idx_map = atomic_orbital_index_map_QE(atom.type());
-                int nbf = atom.mt_basis_size();
+                int nbf      = atom.mt_basis_size();
                 RTE_ASSERT(nbf <= *ld__);
 
                 for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
