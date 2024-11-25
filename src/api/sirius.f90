@@ -6352,6 +6352,55 @@ call sirius_set_density_matrix_aux(gs_handler_ptr,ia_ptr,dm_ptr,ld_ptr,error_cod
 end subroutine sirius_set_density_matrix
 
 !
+!> @brief Get density matrix.
+!> @param [in] gs_handler Ground-state handler.
+!> @param [in] ia Index of atom.
+!> @param [in] dm Input density matrix.
+!> @param [in] ld Leading dimension of the density matrix.
+!> @param [out] error_code Error code.
+subroutine sirius_get_density_matrix(gs_handler,ia,dm,ld,error_code)
+implicit none
+!
+type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+integer, target, intent(in) :: ia
+complex(8), target, intent(in) :: dm(ld, ld, 3)
+integer, target, intent(in) :: ld
+integer, optional, target, intent(out) :: error_code
+!
+type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: ia_ptr
+type(C_PTR) :: dm_ptr
+type(C_PTR) :: ld_ptr
+type(C_PTR) :: error_code_ptr
+!
+interface
+subroutine sirius_get_density_matrix_aux(gs_handler,ia,dm,ld,error_code)&
+&bind(C, name="sirius_get_density_matrix")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), value :: gs_handler
+type(C_PTR), value :: ia
+type(C_PTR), value :: dm
+type(C_PTR), value :: ld
+type(C_PTR), value :: error_code
+end subroutine
+end interface
+!
+gs_handler_ptr = C_NULL_PTR
+gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+ia_ptr = C_NULL_PTR
+ia_ptr = C_LOC(ia)
+dm_ptr = C_NULL_PTR
+dm_ptr = C_LOC(dm)
+ld_ptr = C_NULL_PTR
+ld_ptr = C_LOC(ld)
+error_code_ptr = C_NULL_PTR
+if (present(error_code)) then
+error_code_ptr = C_LOC(error_code)
+endif
+call sirius_get_density_matrix_aux(gs_handler_ptr,ia_ptr,dm_ptr,ld_ptr,error_code_ptr)
+end subroutine sirius_get_density_matrix
+
+!
 !> @brief Set local occupation matrix of LDA+U+V method.
 !> @param [in] handler Ground-state handler.
 !> @param [in] ia Index of atom.

@@ -6549,6 +6549,60 @@ sirius_set_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
 
 /*
 @api begin
+sirius_get_density_matrix:
+  doc: Get density matrix.
+  arguments:
+    gs_handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    dm:
+      type: complex
+      attr: in, required, dimension(ld, ld, 3)
+      doc: Input density matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the density matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<double>* dm__, int const* ld__,
+                          int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs = get_gs(gs_handler__);
+                int ia   = *ia__ - 1;
+                auto& atom = gs.ctx().unit_cell().atom(ia);
+                auto idx_map = atomic_orbital_index_map_QE(atom.type());
+                int nbf = atom.mt_basis_size();
+                RTE_ASSERT(nbf <= *ld__);
+
+                for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int p1 = phase_Rlm_QE(atom.type(), xi1);
+                        for (int xi2 = 0; xi2 < nbf; xi2++) {
+                            int p2 = phase_Rlm_QE(atom.type(), xi2);
+                            dm__[idx_map[xi1], idx_map[xi2], icomp] =
+                                    gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
+                        }
+                    }
+                }
+            },
+            error_code__);
+}
+
+/*
+@api begin
 sirius_set_local_occupation_matrix:
   doc: Set local occupation matrix of LDA+U+V method.
   arguments:
