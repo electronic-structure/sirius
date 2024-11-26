@@ -6355,7 +6355,7 @@ end subroutine sirius_set_density_matrix
 !> @brief Get density matrix.
 !> @param [in] gs_handler Ground-state handler.
 !> @param [in] ia Index of atom.
-!> @param [in] dm Input density matrix.
+!> @param [out] dm Input density matrix.
 !> @param [in] ld Leading dimension of the density matrix.
 !> @param [out] error_code Error code.
 subroutine sirius_get_density_matrix(gs_handler,ia,dm,ld,error_code)
@@ -6363,7 +6363,7 @@ implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
 integer, target, intent(in) :: ia
-complex(8), target, intent(in) :: dm(ld, ld, 3)
+complex(8), target, intent(out) :: dm(ld, ld, 3)
 integer, target, intent(in) :: ld
 integer, optional, target, intent(out) :: error_code
 !

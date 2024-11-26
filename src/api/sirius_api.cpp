@@ -6562,7 +6562,7 @@ sirius_get_density_matrix:
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required, dimension(ld, ld, 3)
+      attr: out, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int
@@ -6581,6 +6581,7 @@ sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
     call_sirius(
             [&]() {
                 auto& gs     = get_gs(gs_handler__);
+                mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
                 int ia       = *ia__ - 1;
                 auto& atom   = gs.ctx().unit_cell().atom(ia);
                 auto idx_map = atomic_orbital_index_map_QE(atom.type());
@@ -6592,7 +6593,7 @@ sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
                         int p1 = phase_Rlm_QE(atom.type(), xi1);
                         for (int xi2 = 0; xi2 < nbf; xi2++) {
                             int p2 = phase_Rlm_QE(atom.type(), xi2);
-                            dm__[idx_map[xi1], idx_map[xi2], icomp] =
+                            dm[idx_map[xi1], idx_map[xi2], icomp] =
                                     gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
                         }
                     }
