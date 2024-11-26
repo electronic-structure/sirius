@@ -6593,7 +6593,7 @@ sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
                         int p1 = phase_Rlm_QE(atom.type(), xi1);
                         for (int xi2 = 0; xi2 < nbf; xi2++) {
                             int p2 = phase_Rlm_QE(atom.type(), xi2);
-                            dm[idx_map[xi1], idx_map[xi2], icomp] =
+                            dm(idx_map[xi1], idx_map[xi2], icomp) =
                                     gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
                         }
                     }
