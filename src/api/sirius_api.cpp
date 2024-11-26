@@ -6667,6 +6667,69 @@ sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const*
 
 /*
 @api begin
+sirius_get_local_occupation_matrix:
+  doc: Get local occupation matrix of LDA+U+V method.
+  arguments:
+    handler:
+      type: gs_handler
+      attr: in, required
+      doc: Ground-state handler.
+    ia:
+      type: int
+      attr: in, required
+      doc: Index of atom.
+    n:
+      type: int
+      attr: in, required
+      doc: Principal quantum number.
+    l:
+      type: int
+      attr: in, required
+      doc: Orbital quantum number.
+    spin:
+      type: int
+      attr: in, required
+      doc: Spin index.
+    occ_mtrx:
+      type: complex
+      attr: out, required, dimension(ld, ld)
+      doc: Local occupation matrix.
+    ld:
+      type: int
+      attr: in, required
+      doc: Leading dimension of the occupation matrix.
+    error_code:
+      type: int
+      attr: out, optional
+      doc: Error code.
+@api end
+*/
+void
+sirius_get_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
+                                   std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
+{
+    call_sirius(
+            [&]() {
+                auto& gs = get_gs(handler__);
+                int ia   = *ia__ - 1;
+                int n    = *n__;
+                int l    = *l__;
+                int spin = *spin__ - 1;
+                mdarray<std::complex<double>, 2> occ_mtrx({*ld__, *ld__}, occ_mtrx__);
+                auto idx      = gs.density().occupation_matrix().find_orbital_index(ia, n, l);
+                auto& local_m = gs.density().occupation_matrix().local(idx);
+                for (int m1 = 0; m1 < 2 * l + 1; m1++) {
+                    for (int m2 = 0; m2 < 2 * l + 1; m2++) {
+                        occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) =
+                                local_m(m1, m2, spin) / static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
+                    }
+                }
+            },
+            error_code__);
+}
+
+/*
+@api begin
 sirius_set_nonlocal_occupation_matrix:
   doc: Set nonlocal part of LDA+U+V occupation matrix.
   arguments:
