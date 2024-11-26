@@ -162,8 +162,8 @@ DFT_ground_state::check_scf_density()
                             << "Eold: " << gs0["energy"]["total"].get<double>()
                             << " Enew: " << gs1["energy"]["total"].get<double>() << std::endl;
 
-        std::vector<std::string> labels({"total", "vha", "vxc", "exc", "bxc", "veff", "eval_sum", "kin", "ewald",
-                                         "vloc", "scf_correction", "entropy_sum"});
+        std::vector<std::string> labels({"total", "vha", "vxc", "vtau", "exc", "bxc", "veff", "eval_sum", "kin",
+                                         "ewald", "vloc", "scf_correction", "entropy_sum"});
 
         for (auto e : labels) {
             RTE_OUT(ctx_.out()) << "energy component: " << e << ", diff: "
@@ -434,6 +434,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
     double s_sum        = kset_.entropy_sum();
     double ekin         = energy_kin(ctx_, kset_, density_, potential_);
     double evxc         = energy_vxc(density_, potential_);
+    double evtau        = energy_vtau(density_, potential_); ///(WIP)TODO: tmp
     double eexc         = energy_exc(density_, potential_);
     double ebxc         = energy_bxc(density_, potential_);
     double evha         = energy_vha(potential_);
@@ -443,7 +444,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
     double ef           = kset_.energy_fermi();
     double enuc         = energy_enuc(ctx_, potential_);
 
-    double one_elec_en = evalsum1 - (evxc + evha + ebxc);
+    double one_elec_en = evalsum1 - (evxc + evtau + evha + ebxc);
 
     if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy(density_);
@@ -473,6 +474,7 @@ DFT_ground_state::print_info(std::ostream& out__) const
         write_energy("enuc", enuc);
     }
     write_energy("<rho|V^{XC}>", evxc);
+    write_energy("<tau|V^{tau}>", evtau);
     write_energy("<rho|E^{XC}>", eexc);
     write_energy("<mag|B^{XC}>", ebxc);
     write_energy("<rho|V^{H}>", evha);

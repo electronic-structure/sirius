@@ -78,11 +78,22 @@ Density::Density(Simulation_context& ctx__)
         RTE_THROW("Simulation_context is not initialized");
     }
 
+    using pf  = Periodic_function<double>;
     using spf = Smooth_periodic_function<double>;
 
     /*  allocate charge density and magnetization on a coarse grid */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         rho_mag_coarse_[i] = std::make_unique<spf>(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr());
+    }
+
+    if (ctx_.meta_gga()) {
+        if (ctx_.full_potential()) {
+            tau_ = std::make_unique<pf>(
+                    ctx_, [&](int ia) { return lmax_t(ctx_.lmax_pot()); }, &ctx_.unit_cell().spl_num_atoms());
+        } else {
+            tau_ = std::make_unique<pf>(ctx_);
+        }
+        tau_coarse_ = std::make_unique<spf>(ctx_.spfft_coarse<double>(), ctx_.gvec_coarse_fft_sptr());
     }
 
     /* core density of the pseudopotential method */
@@ -713,6 +724,16 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
                              mdarray_label("density_rg"));
     density_rg.zero();
 
+    ///(WIP)TODO: test if tau needed, only 1 dimension for now
+    mdarray<T, 2> tau_rg({nr, ctx_.num_mag_dims() + 1}, get_memory_pool(memory_t::host), mdarray_label("tau_rg"));
+    tau_rg.zero();
+
+    /// create a PW buffer to hold derivative of Phi (WIP)TODO: assume CPU for now
+    mdarray<std::complex<T>, 1> buf_pw({kp__->gkvec_fft_sptr()->count()}, get_memory_pool(ctx_.host_memory_t()));
+    // if (ctx_.processing_unit() == device_t::GPU) {
+    //     buf_pw.allocate(get_memory_pool(memory_t::device));
+    // }
+
     if (fft.processing_unit() == SPFFT_PU_GPU) {
         density_rg.allocate(get_memory_pool(memory_t::device)).zero(memory_t::device);
     }
@@ -733,6 +754,27 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
 
                 add_k_point_contribution_rg_collinear(kp__->spfft_transform(), ispn, w, inp_wf, nr, ctx_.gamma_point(),
                                                       density_rg);
+
+                ///(WIP)TODO: the above calculates |phi^2| from the G+k representation. We can use
+                ///           the same function, if we pass grad phi as an argument, and a factor 0.5
+
+                /// TODO: this assumes CPU, would need to add extra if for GPU
+                ///       will also need to copy back from GPU after that
+                ///  Note: it seems that tau is correct
+                ///  Can probably use to_gradient() here (see xc.cpp)
+                if (ctx_.meta_gga()) {
+                    for (int x : {0, 1, 2}) {
+                        #pragma omp parallel for
+                        for (int igloc = 0; igloc < kp__->gkvec_fft_sptr()->count(); igloc++) {
+                            auto gvc = kp__->gkvec_fft_sptr()->gkvec_cart(igloc);
+                            /* grad P phi = phi(G+k) * (G+k) */
+                            buf_pw[igloc] = wf_fft__[ispn].pw_coeffs(igloc, wf::band_index(i)) * static_cast<T>(gvc[x]);
+                        }
+                        add_k_point_contribution_rg_collinear(kp__->spfft_transform(), ispn, w,
+                                                              reinterpret_cast<T const*>(buf_pw.at(wf_mem)), nr,
+                                                              ctx_.gamma_point(), tau_rg);
+                    }
+                }
             }
         } // ispn
     } else { /* non-collinear case */
@@ -787,6 +829,17 @@ Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_funct
             for (int ir = 0; ir < nr; ir++) {
                 rho_mag_coarse_[0]->value(ir) += density_rg(ir, 0); // rho
             }
+
+            if (ctx_.meta_gga()) {
+                #pragma omp parallel for
+                for (int ir = 0; ir < nr; ir++) {
+                    ///(WIP)TODO: add the 0.5 factor for kinetic density
+                    // TODO: check if tau is correct in the first place:
+                    //       - if replace G by 1, should get back the normal density
+                    //       - should be able to compare to DFTK, if rho is also the same
+                    tau_coarse_->value(ir) += 0.5 * tau_rg(ir, 0);
+                }
+            }
         }
     }
 }
@@ -837,6 +890,80 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
                         .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 0),
                               wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one, density_matrix__[ia].at(memory_t::host, 0, 0, 2),
                               density_matrix__[ia].ld());
+            }
+        }
+    }
+}
+
+/// Add contribution to kinetic energy density from all occupied wave-functions of a given k-point.
+/** Once wave-functions are computed, muffin=tin kinetic energy density is computed in the following way:
+ *  - gradient is applied to spheric function; its spherical expansion is
+ *  \f[
+ *    {\bf g}({\bf r}) = \nabla \psi({\bf r}) = \sum_{L}g_{L}^{x}(r) Y_{L}
+ *  \f]
+ *  - inner product of gradients is computed analyticaly
+ *  \f[
+ *    \sum_{x} \sum_{L_1} g_{L_1}^{x*}(r) Y_{L_1}^{*} \sum_{L_2} g_{L_2}^{x}(r) Y_{L_2} = \sum_{L_3} f_{L_3}(r) R_{L_3}
+ *  \f]
+ *  where
+ *  \f[
+ *    f_{L_3}(r) =  \sum_{x} \sum_{L_1} \sum_{L_2} g_{L_1}^{x*}(r) g_{L_2}^{x}(r) \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle
+ *  \f]
+ *
+ *  Alternative approach: transfrom gradient from spherical harmoics to spherical coordinates and accumulate
+ *  contribution to kinetic energy density in real space. At the end transform back to spectral representation,
+ *  symmetrize and transform back.
+ *
+ */
+template <typename T>
+static void
+add_k_point_contribution_tau_mt(Simulation_context const& ctx__, K_point<T> const& kp__,
+                                Periodic_function<T>& tau__)
+{
+    auto& uc = ctx__.unit_cell();
+
+    for (auto it : kp__.spinor_wave_functions().spl_num_atoms()) {
+        int ia            = it.i;
+        int mt_basis_size = uc.atom(ia).type().mt_basis_size();
+        int lmax_apw = uc.atom(ia).type().lmax_apw();
+
+        Gaunt_coefficients<std::complex<double>> gc(lmax_apw, ctx__.lmax_pot(), lmax_apw, SHT::gaunt_hybrid);
+
+        Spheric_function<function_domain_t::spectral, std::complex<T>> psi(lmax_apw, uc.atom(ia).radial_grid());
+        for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
+            for (int j = 0; j < kp__.num_occupied_bands(ispn); j++) {
+                auto w = kp__.band_occupancy(j, ispn) * kp__.weight();
+
+                psi.zero();
+
+                for (int xi = 0; xi < mt_basis_size; xi++) {
+                    int lm = uc.atom(ia).type().indexb(xi).lm;
+                    int idxrf = uc.atom(ia).type().indexb(xi).idxrf;
+
+                    auto z = kp__.spinor_wave_functions().mt_coeffs(xi, it.li, wf::spin_index(ispn), wf::band_index(j));
+
+                    /* wave-function radial components */
+                    for (int ir = 0; ir < uc.atom(ia).num_mt_points(); ir++) {
+                        psi(lm, ir) += z * uc.atom(ia).symmetry_class().radial_function(ir, idxrf);
+                    }
+                }
+                auto g = gradient(psi);
+                for (int x : {0, 1, 2}) {
+                    for (int lm3 = 0; lm3 < ctx__.lmmax_pot(); lm3++) {
+                        /* <Y_L1 | R_L3 | Y_L2> is mostly sparse; loop only over non-zero elements */
+                        for (int i = 0; i < gc.num_gaunt(lm3); i++) {
+                            /* non-zero coefficient */
+                            auto result = gc.gaunt(lm3, i);
+                            auto lm1 = result.lm1;
+                            auto lm2 = result.lm2;
+                            auto coef = result.coef;
+                            for (int ir = 0; ir < uc.atom(ia).num_mt_points(); ir++) {
+                                //tau[ispn](lm3, ir, ia) += std::real(std::conj(g[x](lm1, ir)) * g[x](lm2, ir) * coef) * w;
+                                tau__.mt()[ia](lm3, ir) += std::real(std::conj(g[x](lm1, ir)) * g[x](lm2, ir) * coef) * w;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1116,6 +1243,8 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
             for (auto it : unit_cell_.spl_num_atoms()) {
                 for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
                     rho().mt()[it.i](0, ir) += unit_cell_.atom(it.i).symmetry_class().ae_core_charge_density(ir) / y00;
+                    ///(WIP)TODO: note that only the l=0 element of rho() is populated, probably
+                    ///           important when calculating the Laplacian of the product for tau
                 }
             }
         }
@@ -1126,6 +1255,20 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
     }
     if (symmetrize__) {
         symmetrize_field4d(*this);
+
+        if (ctx_.meta_gga()) {
+            /// (WIP)TODO: make a test on tau or not. For now, assume spin-restricted
+            ///            Might want to combine tau PW and tau MT in a single Field4D, eventually
+            std::vector<Smooth_periodic_function<double>*> tau_vec_pw;
+            tau_vec_pw.push_back(&tau_->rg());
+            symmetrize_pw_function(ctx_.unit_cell().symmetry(), ctx_.remap_gvec(), ctx_.sym_phase_factors(),
+                                   ctx_.num_mag_dims(), tau_vec_pw);
+
+            std::vector<Spheric_function_set<double, atom_index_t>*> tau_vec_mt;
+            tau_vec_mt.push_back(&tau_->mt());
+            symmetrize_mt_function(ctx_.unit_cell(), ctx_.rotm(), ctx_.mpi_grid_mt_sym(), ctx_.num_mag_dims(), tau_vec_mt);
+        }
+
         if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             std::unique_ptr<density_matrix_t> dm_ref;
             std::unique_ptr<Occupation_matrix> om_ref;
@@ -1215,6 +1358,10 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
     if (transform_to_rg__) {
         this->fft_transform(1);
+        /// (WIP)TODO: test on tau
+        if (ctx_.meta_gga()) {
+            tau_->rg().fft_transform(1);
+        }
     }
 }
 
@@ -1292,6 +1439,12 @@ Density::generate_valence(K_point_set const& ks__)
         rho_mag_coarse_[i]->zero();
     }
 
+    /// (WIP)TODO: test if tau needed
+    if (ctx_.meta_gga()) {
+        tau_->zero();
+        tau_coarse_->zero();
+    }
+
     auto mem = ctx_.processing_unit() == device_t::CPU ? memory_t::host : memory_t::device;
 
     /* start the main loop over k-points */
@@ -1360,6 +1513,26 @@ Density::generate_valence(K_point_set const& ks__)
         }
     }
 
+    if (ctx_.meta_gga()) {
+        /// (WIP)TODO: same reduction of the tau density + put on finer PW grid
+        auto ptr = (ctx_.spfft_coarse<double>().local_slice_size() == 0) ? nullptr : &tau_coarse_->value(0);
+        /* reduce arrays; assume that each rank did its own fraction of the density */
+        /* comm_ortho_fft is identical to a product of column communicator inside k-point with k-point communicator */
+        comm.allreduce(ptr, ctx_.spfft_coarse<double>().local_slice_size());
+        /* print checksum if needed */
+        if (env::print_checksum()) {
+            auto cs = mdarray<double, 1>({ctx_.spfft_coarse<double>().local_slice_size()}, ptr).checksum();
+            mpi::Communicator(ctx_.spfft_coarse<double>().communicator()).allreduce(&cs, 1);
+            print_checksum("tau_coarse_rg", cs, ctx_.out());
+        }
+        /* transform to PW domain */
+        tau_coarse_->fft_transform(-1);
+        /* map to fine G-vector grid */
+        for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
+            tau_->rg().f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = tau_coarse_->f_pw_local(igloc);
+        }
+    }
+
     if (!ctx_.full_potential()) {
         augment();
 
@@ -1387,7 +1560,7 @@ Density::generate_valence(K_point_set const& ks__)
 
     /* for muffin-tin part */
     if (ctx_.full_potential()) {
-        generate_valence_mt();
+        generate_valence_mt(ks__);
     }
 }
 
@@ -1597,7 +1770,7 @@ Density::reduce_density_matrix(Atom_type const& atom_type__, mdarray<std::comple
 }
 
 void
-Density::generate_valence_mt()
+Density::generate_valence_mt(K_point_set const& ks__)
 {
     PROFILE("sirius::Density::generate_valence_mt");
 
@@ -1702,6 +1875,20 @@ Density::generate_valence_mt()
                                                   unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf1) *
                                                   unit_cell_.atom(it.i).symmetry_class().radial_function(ir, idxrf2);
                 }
+
+                /// (WIP)TODO: Calculate here (or around here) the muffin-tin part of tau
+                /// According to PhysRevB.91.075101, the kinetic energy density can be expressed as:
+                /// tau = 0.5*[ lapl(rho) - sum_jk lapl(psi_jk)*psi_jk - sum_jk psi_jk*lapl(psi_jk)]
+                /// The first bit, lapl(rho) is straight forward: rho is already calculated as a
+                /// spectral function, and the laplacian is implemented for it.
+                /// For the second and third term, we need to use the relation:
+                /// lapl(u(r)*Y_lm) = [u''(r) + 2u'(r)/r - l(l+1)u(r)/r^2]*Y_lm, where only the radial
+                /// part is affected. Since the muffin-tin basis functions follow this format, we only
+                /// have to make a modification for the radial part as well. In this loop over products
+                /// of u_1(r)*u_2(r), we can calculate the contributions of the laplacians by accessing
+                /// the l quantum number with atom_type_.indexr(idxrf).am.l(), and the u''(r) and u'(r)
+                /// derivatives with a spline. Then, we contract with the density matrix the same way
+                /// it is done for the density
             }
         }
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -1731,6 +1918,14 @@ Density::generate_valence_mt()
             case 0: {
                 std::copy(&dlm(0, 0, 0), &dlm(0, 0, 0) + sz, &rho().mt()[it.i](0, 0));
             }
+        }
+    }
+
+    /// (WIP)TODO: generate the mt part of the kinetic energy potential
+    if (ctx_.meta_gga()) {
+        for (auto it : ks__.spl_num_kpoints()) {
+            auto kp = ks__.get<double>(it.i);
+            add_k_point_contribution_tau_mt(ctx_, *kp, tau());
         }
     }
 }
