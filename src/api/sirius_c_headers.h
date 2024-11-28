@@ -3233,20 +3233,24 @@ void
 sirius_load_state(void** gs_handler__, const char* file_name__, int* error_code__);
 
 /*
-sirius_set_density_matrix:
-  doc: Set density matrix.
+sirius_access_density_matrix:
+  doc: Access (get or set) density matrix.
   arguments:
     gs_handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     ia:
       type: int
       attr: in, required
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required, dimension(ld, ld, 3)
+      attr: inout, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int
@@ -3258,17 +3262,21 @@ sirius_set_density_matrix:
       doc: Error code.
 */
 void
-sirius_set_density_matrix(void** gs_handler__, int const* ia__, double complex* dm__, int const* ld__,
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, double complex* dm__, int const* ld__,
                           int* error_code__);
 
 /*
-sirius_set_local_occupation_matrix:
-  doc: Set local occupation matrix of LDA+U+V method.
+sirius_access_local_occupation_matrix:
+  doc: Access (get or set) local occupation matrix of LDA+U+V method.
   arguments:
     handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     ia:
       type: int
       attr: in, required
@@ -3287,7 +3295,7 @@ sirius_set_local_occupation_matrix:
       doc: Spin index.
     occ_mtrx:
       type: complex
-      attr: in, required, dimension(ld, ld)
+      attr: inout, required, dimension(ld, ld)
       doc: Local occupation matrix.
     ld:
       type: int
@@ -3299,17 +3307,21 @@ sirius_set_local_occupation_matrix:
       doc: Error code.
 */
 void
-sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
+sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__, int const* l__, int const* spin__,
                                    double complex* occ_mtrx__, int const* ld__, int* error_code__);
 
 /*
-sirius_set_nonlocal_occupation_matrix:
-  doc: Set nonlocal part of LDA+U+V occupation matrix.
+sirius_access_nonlocal_occupation_matrix:
+  doc: Access (get or set) nonlocal part of LDA+U+V occupation matrix.
   arguments:
     handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     atom_pair:
       type: int
       attr: in, required, dimension(2)
@@ -3332,7 +3344,7 @@ sirius_set_nonlocal_occupation_matrix:
       doc: Translation vector that connects two atoms.
     occ_mtrx:
       type: complex
-      attr: in, required, dimension(ld1, ld2)
+      attr: inout, required, dimension(ld1, ld2)
       doc: Nonlocal occupation matrix.
     ld1:
       type: int
@@ -3348,7 +3360,7 @@ sirius_set_nonlocal_occupation_matrix:
       doc: Error code.
 */
 void
-sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, int const* n__, int const* l__,
+sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__, int const* n__, int const* l__,
                                       int const* spin__, int const* T__, double complex* occ_mtrx__,
                                       int const* ld1__, int const* ld2__, int* error_code__);
 
