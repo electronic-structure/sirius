@@ -244,15 +244,17 @@ normalized_preconditioned_residuals(memory_t mem__, wf::spin_range spins__, wf::
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (gamma__ && res__.comm().rank() == 0 && n != 0) {
-        RTE_ASSERT(spins__.begin().get() + 1 == spins__.end().get());
+        /* this is non-magnetic or collinear case, only single spin channels at once is allowed */
+        RTE_ASSERT(spins__.size() == 1);
+        auto sp = res__.actual_spin_index(spins__.begin());
         if (is_device_memory(mem__)) {
 #if defined(SIRIUS_GPU)
-            make_real_g0_gpu(res__.at(mem__, 0, spins__.begin(), wf::band_index(0)), res__.ld(), n);
+            make_real_g0_gpu(res__.at(mem__, 0, sp, wf::band_index(0)), res__.ld(), n);
 #endif
         } else {
             for (int i = 0; i < n; i++) {
-                res__.pw_coeffs(0, spins__.begin(), wf::band_index(i)) =
-                        res__.pw_coeffs(0, spins__.begin(), wf::band_index(i)).real();
+                res__.pw_coeffs(0, sp, wf::band_index(i)) =
+                        res__.pw_coeffs(0, sp, wf::band_index(i)).real();
             }
         }
     }

@@ -1585,14 +1585,15 @@ transform(::spla::Context& spla_ctx__, memory_t mem__, la::dmatrix<F> const& M__
 /** This is needed for the Gamma-point calculation to exclude the double-counting of G=0 term.
  */
 template <typename T>
-inline void
+inline static void
 scale_gamma_wf(memory_t mem__, wf::Wave_functions<T> const& wf__, wf::spin_range spins__, wf::band_range br__,
                T* scale__)
 {
     RTE_ASSERT(spins__.size() == 1);
 
     auto& wf = const_cast<Wave_functions<T>&>(wf__);
-    RTE_ASSERT(wf.num_sc() == wf::num_spins(1)); // TODO: might be too strong check
+    /* only single spin component at a time is allowed */
+    RTE_ASSERT(spins__.size() == 1);
 
     /* rank 0 stores the G=0 component */
     if (wf.comm().rank() != 0) {
