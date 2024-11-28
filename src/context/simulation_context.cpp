@@ -1208,6 +1208,10 @@ Simulation_context::create_storage_file(std::string name__) const
         auto config = this->serialize()["config"];
         config.erase("locked");
         config["control"].erase("mpi_grid_dims");
+        config["control"].erase("fft_mode");
+        config["control"].erase("gen_evp_solver_name");
+        config["control"].erase("std_evp_solver_name");
+        config["settings"].erase("fft_grid_size");
         fout.write("config", config.dump());
     }
     comm_.barrier();
