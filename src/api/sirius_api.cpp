@@ -6494,20 +6494,24 @@ sirius_load_state(void** gs_handler__, const char* file_name__, int* error_code_
 
 /*
 @api begin
-sirius_set_density_matrix:
-  doc: Set density matrix.
+sirius_access_density_matrix:
+  doc: Access (get or set) density matrix.
   arguments:
     gs_handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     ia:
       type: int
       attr: in, required
       doc: Index of atom.
     dm:
       type: complex
-      attr: in, required, dimension(ld, ld, 3)
+      attr: inout, required, dimension(ld, ld, 3)
       doc: Input density matrix.
     ld:
       type: int
@@ -6520,12 +6524,13 @@ sirius_set_density_matrix:
 @api end
 */
 void
-sirius_set_density_matrix(void** gs_handler__, int const* ia__, std::complex<double>* dm__, int const* ld__,
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, std::complex<double>* dm__, int const* ld__,
                           int* error_code__)
 {
     call_sirius(
             [&]() {
                 auto& gs = get_gs(gs_handler__);
+                std::string access(access_type__);
                 mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
                 int ia       = *ia__ - 1;
                 auto& atom   = gs.ctx().unit_cell().atom(ia);
@@ -6538,8 +6543,13 @@ sirius_set_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
                         int p1 = phase_Rlm_QE(atom.type(), xi1);
                         for (int xi2 = 0; xi2 < nbf; xi2++) {
                             int p2 = phase_Rlm_QE(atom.type(), xi2);
-                            gs.density().density_matrix(ia)(xi1, xi2, icomp) =
-                                    dm(idx_map[xi1], idx_map[xi2], icomp) * static_cast<double>(p1 * p2);
+                            if (access == "get") { // QE <-- SIRIUS
+                              dm(idx_map[xi1], idx_map[xi2], icomp) =
+                                      gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
+                            } else { // access == "set", QE --> SIRIUS
+                              gs.density().density_matrix(ia)(xi1, xi2, icomp) =
+                                      dm(idx_map[xi1], idx_map[xi2], icomp) * static_cast<double>(p1 * p2);
+                            }
                         }
                     }
                 }
@@ -6549,68 +6559,17 @@ sirius_set_density_matrix(void** gs_handler__, int const* ia__, std::complex<dou
 
 /*
 @api begin
-sirius_get_density_matrix:
-  doc: Get density matrix.
-  arguments:
-    gs_handler:
-      type: gs_handler
-      attr: in, required
-      doc: Ground-state handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Index of atom.
-    dm:
-      type: complex
-      attr: out, required, dimension(ld, ld, 3)
-      doc: Input density matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of the density matrix.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_get_density_matrix(void** gs_handler__, int const* ia__, std::complex<double>* dm__, int const* ld__,
-                          int* error_code__)
-{
-    call_sirius(
-            [&]() {
-                auto& gs     = get_gs(gs_handler__);
-                mdarray<std::complex<double>, 3> dm({*ld__, *ld__, 3}, dm__);
-                int ia       = *ia__ - 1;
-                auto& atom   = gs.ctx().unit_cell().atom(ia);
-                auto idx_map = atomic_orbital_index_map_QE(atom.type());
-                int nbf      = atom.mt_basis_size();
-                RTE_ASSERT(nbf <= *ld__);
-
-                for (int icomp = 0; icomp < gs.ctx().num_mag_comp(); icomp++) {
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int p1 = phase_Rlm_QE(atom.type(), xi1);
-                        for (int xi2 = 0; xi2 < nbf; xi2++) {
-                            int p2 = phase_Rlm_QE(atom.type(), xi2);
-                            dm(idx_map[xi1], idx_map[xi2], icomp) =
-                                    gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
-                        }
-                    }
-                }
-            },
-            error_code__);
-}
-
-/*
-@api begin
-sirius_set_local_occupation_matrix:
-  doc: Set local occupation matrix of LDA+U+V method.
+sirius_access_local_occupation_matrix:
+  doc: Access (get or set) local occupation matrix of LDA+U+V method.
   arguments:
     handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     ia:
       type: int
       attr: in, required
@@ -6629,7 +6588,7 @@ sirius_set_local_occupation_matrix:
       doc: Spin index.
     occ_mtrx:
       type: complex
-      attr: in, required, dimension(ld, ld)
+      attr: inout, required, dimension(ld, ld)
       doc: Local occupation matrix.
     ld:
       type: int
@@ -6642,12 +6601,13 @@ sirius_set_local_occupation_matrix:
 @api end
 */
 void
-sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
+sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__, int const* l__, int const* spin__,
                                    std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
 {
     call_sirius(
             [&]() {
                 auto& gs = get_gs(handler__);
+                std::string access(access_type__);
                 int ia   = *ia__ - 1;
                 int n    = *n__;
                 int l    = *l__;
@@ -6657,71 +6617,13 @@ sirius_set_local_occupation_matrix(void** handler__, int const* ia__, int const*
                 auto& local_m = gs.density().occupation_matrix().local(idx);
                 for (int m1 = 0; m1 < 2 * l + 1; m1++) {
                     for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                        local_m(m1, m2, spin) = occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) *
-                                                static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
-                    }
-                }
-            },
-            error_code__);
-}
-
-/*
-@api begin
-sirius_get_local_occupation_matrix:
-  doc: Get local occupation matrix of LDA+U+V method.
-  arguments:
-    handler:
-      type: gs_handler
-      attr: in, required
-      doc: Ground-state handler.
-    ia:
-      type: int
-      attr: in, required
-      doc: Index of atom.
-    n:
-      type: int
-      attr: in, required
-      doc: Principal quantum number.
-    l:
-      type: int
-      attr: in, required
-      doc: Orbital quantum number.
-    spin:
-      type: int
-      attr: in, required
-      doc: Spin index.
-    occ_mtrx:
-      type: complex
-      attr: out, required, dimension(ld, ld)
-      doc: Local occupation matrix.
-    ld:
-      type: int
-      attr: in, required
-      doc: Leading dimension of the occupation matrix.
-    error_code:
-      type: int
-      attr: out, optional
-      doc: Error code.
-@api end
-*/
-void
-sirius_get_local_occupation_matrix(void** handler__, int const* ia__, int const* n__, int const* l__, int const* spin__,
-                                   std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
-{
-    call_sirius(
-            [&]() {
-                auto& gs = get_gs(handler__);
-                int ia   = *ia__ - 1;
-                int n    = *n__;
-                int l    = *l__;
-                int spin = *spin__ - 1;
-                mdarray<std::complex<double>, 2> occ_mtrx({*ld__, *ld__}, occ_mtrx__);
-                auto idx      = gs.density().occupation_matrix().find_orbital_index(ia, n, l);
-                auto& local_m = gs.density().occupation_matrix().local(idx);
-                for (int m1 = 0; m1 < 2 * l + 1; m1++) {
-                    for (int m2 = 0; m2 < 2 * l + 1; m2++) {
-                        occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) =
+                        if (access == "get") { // QE <-- SIRIUS
+                            occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) =
                                 local_m(m1, m2, spin) / static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
+                        } else { // access == "set", QE --> SIRIUS
+                            local_m(m1, m2, spin) = occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) *
+                                                    static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
+                        }
                     }
                 }
             },
@@ -6730,13 +6632,17 @@ sirius_get_local_occupation_matrix(void** handler__, int const* ia__, int const*
 
 /*
 @api begin
-sirius_set_nonlocal_occupation_matrix:
-  doc: Set nonlocal part of LDA+U+V occupation matrix.
+sirius_access_nonlocal_occupation_matrix:
+  doc: Access (get or set) nonlocal part of LDA+U+V occupation matrix.
   arguments:
     handler:
       type: gs_handler
       attr: in, required
       doc: Ground-state handler.
+    access_type:
+      type: string
+      attr: in, required
+      doc: Access type ("get" or "set").
     atom_pair:
       type: int
       attr: in, required, dimension(2)
@@ -6759,7 +6665,7 @@ sirius_set_nonlocal_occupation_matrix:
       doc: Translation vector that connects two atoms.
     occ_mtrx:
       type: complex
-      attr: in, required, dimension(ld1, ld2)
+      attr: inout, required, dimension(ld1, ld2)
       doc: Nonlocal occupation matrix.
     ld1:
       type: int
@@ -6776,7 +6682,7 @@ sirius_set_nonlocal_occupation_matrix:
 @api end
 */
 void
-sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, int const* n__, int const* l__,
+sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__, int const* n__, int const* l__,
                                       int const* spin__, int const* T__, std::complex<double>* occ_mtrx__,
                                       int const* ld1__, int const* ld2__, int* error_code__)
 {
@@ -6792,6 +6698,7 @@ sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, 
                 int l2    = l__[1];
                 int spin  = *spin__ - 1;
                 r3::vector<int> T(T__);
+                std::string access(access_type__);
 
                 bool found{false};
                 for (int i = 0; i < ctx.cfg().hubbard().nonlocal().size(); i++) {
@@ -6802,9 +6709,15 @@ sirius_set_nonlocal_occupation_matrix(void** handler__, int const* atom_pair__, 
                         mdarray<std::complex<double>, 2> occ_mtrx({*ld1__, *ld2__}, occ_mtrx__);
                         for (int m1 = 0; m1 < 2 * l1 + 1; m1++) {
                             for (int m2 = 0; m2 < 2 * l2 + 1; m2++) {
-                                gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) =
-                                        occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) *
+                                if (access == "get") { // QE <-- SIRIUS
+                                    occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) =
+                                        gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) /
                                         static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
+                                } else { // access == "set", QE --> SIRIUS
+                                  gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) =
+                                          occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) *
+                                          static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
+                                }
                             }
                         }
                         found = true;
