@@ -6524,8 +6524,8 @@ sirius_access_density_matrix:
 @api end
 */
 void
-sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__, std::complex<double>* dm__, int const* ld__,
-                          int* error_code__)
+sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int const* ia__,
+                             std::complex<double>* dm__, int const* ld__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -6544,11 +6544,11 @@ sirius_access_density_matrix(void** gs_handler__, const char* access_type__, int
                         for (int xi2 = 0; xi2 < nbf; xi2++) {
                             int p2 = phase_Rlm_QE(atom.type(), xi2);
                             if (access == "get") { // QE <-- SIRIUS
-                              dm(idx_map[xi1], idx_map[xi2], icomp) =
-                                      gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
+                                dm(idx_map[xi1], idx_map[xi2], icomp) =
+                                        gs.density().density_matrix(ia)(xi1, xi2, icomp) / static_cast<double>(p1 * p2);
                             } else { // access == "set", QE --> SIRIUS
-                              gs.density().density_matrix(ia)(xi1, xi2, icomp) =
-                                      dm(idx_map[xi1], idx_map[xi2], icomp) * static_cast<double>(p1 * p2);
+                                gs.density().density_matrix(ia)(xi1, xi2, icomp) =
+                                        dm(idx_map[xi1], idx_map[xi2], icomp) * static_cast<double>(p1 * p2);
                             }
                         }
                     }
@@ -6601,8 +6601,9 @@ sirius_access_local_occupation_matrix:
 @api end
 */
 void
-sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__, int const* l__, int const* spin__,
-                                   std::complex<double>* occ_mtrx__, int const* ld__, int* error_code__)
+sirius_access_local_occupation_matrix(void** handler__, const char* access_type__, int const* ia__, int const* n__,
+                                      int const* l__, int const* spin__, std::complex<double>* occ_mtrx__,
+                                      int const* ld__, int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -6619,7 +6620,8 @@ sirius_access_local_occupation_matrix(void** handler__, const char* access_type_
                     for (int m2 = 0; m2 < 2 * l + 1; m2++) {
                         if (access == "get") { // QE <-- SIRIUS
                             occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) =
-                                local_m(m1, m2, spin) / static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
+                                    local_m(m1, m2, spin) /
+                                    static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
                         } else { // access == "set", QE --> SIRIUS
                             local_m(m1, m2, spin) = occ_mtrx(idx_m_qe(m1 - l), idx_m_qe(m2 - l)) *
                                                     static_cast<double>(phase_m_qe(m1 - l) * phase_m_qe(m2 - l));
@@ -6682,9 +6684,10 @@ sirius_access_nonlocal_occupation_matrix:
 @api end
 */
 void
-sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__, int const* n__, int const* l__,
-                                      int const* spin__, int const* T__, std::complex<double>* occ_mtrx__,
-                                      int const* ld1__, int const* ld2__, int* error_code__)
+sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_type__, int const* atom_pair__,
+                                         int const* n__, int const* l__, int const* spin__, int const* T__,
+                                         std::complex<double>* occ_mtrx__, int const* ld1__, int const* ld2__,
+                                         int* error_code__)
 {
     call_sirius(
             [&]() {
@@ -6711,12 +6714,12 @@ sirius_access_nonlocal_occupation_matrix(void** handler__, const char* access_ty
                             for (int m2 = 0; m2 < 2 * l2 + 1; m2++) {
                                 if (access == "get") { // QE <-- SIRIUS
                                     occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) =
-                                        gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) /
-                                        static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
+                                            gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) /
+                                            static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
                                 } else { // access == "set", QE --> SIRIUS
-                                  gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) =
-                                          occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) *
-                                          static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
+                                    gs.density().occupation_matrix().nonlocal(i)(m1, m2, spin) =
+                                            occ_mtrx(idx_m_qe(m1 - l1), idx_m_qe(m2 - l2)) *
+                                            static_cast<double>(phase_m_qe(m1 - l1) * phase_m_qe(m2 - l2));
                                 }
                             }
                         }
