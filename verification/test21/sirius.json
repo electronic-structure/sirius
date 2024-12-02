@@ -127,7 +127,6 @@
     "mixer": {
         "beta": 0.4,
         "type": "broyden1",
-        "max_history": 8,
-        "use_hartree" : true
+        "max_history": 8
     }
 }
