@@ -1166,18 +1166,18 @@ Simulation_context::update()
 void
 Simulation_context::create_storage_file(std::string name__) const
 {
+    if (!initialized_) {
+        RTE_THROW("Simulation_context must be initialized first");
+    }
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
         HDF5_tree fout(name__, hdf5_access_t::truncate);
         fout.create_node("parameters");
-        fout.create_node("effective_potential");
-        fout.create_node("effective_magnetic_field");
         fout.create_node("density");
         fout.create_node("magnetization");
 
         for (int j = 0; j < num_mag_dims(); j++) {
             fout["magnetization"].create_node(j);
-            fout["effective_magnetic_field"].create_node(j);
         }
 
         fout["parameters"].write("num_spins", num_spins());
@@ -1196,10 +1196,23 @@ Simulation_context::create_storage_file(std::string name__) const
 
         fout.create_node("unit_cell");
         fout["unit_cell"].create_node("atoms");
-        for (int j = 0; j < unit_cell().num_atoms(); j++) {
-            fout["unit_cell"]["atoms"].create_node(j);
-            fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
+        fout["unit_cell"].create_node("atom_types");
+        for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
+            fout["unit_cell"]["atoms"].create_node(ia);
+            fout["unit_cell"]["atoms"][ia].write("mt_basis_size", unit_cell().atom(ia).mt_basis_size());
         }
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            fout["unit_cell"]["atom_types"].create_node(iat);
+            fout["unit_cell"]["atom_types"][iat].write("config", unit_cell().atom_type(iat).serialize().dump());
+        }
+        auto config = this->serialize()["config"];
+        config.erase("locked");
+        config["control"].erase("mpi_grid_dims");
+        config["control"].erase("fft_mode");
+        config["control"].erase("gen_evp_solver_name");
+        config["control"].erase("std_evp_solver_name");
+        config["settings"].erase("fft_grid_size");
+        fout.write("config", config.dump());
     }
     comm_.barrier();
 }

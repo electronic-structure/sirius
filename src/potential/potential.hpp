@@ -609,12 +609,6 @@ class Potential : public Field4D
     generate(Density const& density__, bool use_sym__, bool transform_to_rg__);
 
     void
-    save(std::string name__);
-
-    void
-    load(std::string name__);
-
-    void
     update_atomic_potential();
 
     template <device_t pu>

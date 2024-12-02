@@ -621,6 +621,9 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
                 std::istringstream iss(std::string(1, c1[0]));
                 iss >> n;
             }
+            if (dict[k].count("principal_quantum_number")) {
+                n = dict[k]["principal_quantum_number"].get<int>();
+            }
 
             if (spin_orbit_coupling() && dict[k].count("total_angular_momentum") && l != 0) {
 
@@ -643,7 +646,7 @@ Atom_type::read_pseudo_uspp(nlohmann::json const& parser)
 void
 Atom_type::read_pseudo_paw(nlohmann::json const& parser)
 {
-    is_paw_ = true;
+    this->is_paw_ = true;
 
     auto& header = parser["pseudo_potential"]["header"];
     /* read core energy */
@@ -654,7 +657,7 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
     }
 
     /* cutoff index */
-    int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"].get<int>();
+    int cutoff_radius_index = parser["pseudo_potential"]["header"].value("cutoff_radius_index", -1);
 
     /* read core density and potential */
     paw_ae_core_charge_density(
@@ -679,7 +682,9 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
             RTE_THROW(s);
         }
 
-        add_ae_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
+        int last = (cutoff_radius_index == -1) ? wfc.size() : cutoff_radius_index;
+
+        add_ae_paw_wf({wfc.begin(), wfc.begin() + last});
 
         wfc = parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"].get<std::vector<double>>();
 
@@ -691,14 +696,15 @@ Atom_type::read_pseudo_paw(nlohmann::json const& parser)
             RTE_THROW(s);
         }
 
-        add_ps_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
+        last = (cutoff_radius_index == -1) ? wfc.size() : cutoff_radius_index;
+
+        add_ps_paw_wf({wfc.begin(), wfc.begin() + last});
     }
 }
 
 void
 Atom_type::read_input(nlohmann::json const& parser)
 {
-
     if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);
 
@@ -1254,6 +1260,227 @@ Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double 
     /* add Hubbard orbital descriptor to a list */
     lo_descriptors_hub_.emplace_back(n__, l__, -1, occ__, J, U, hub_coef__, alpha__, beta__, J0__, initial_occupancy__,
                                      std::move(s.interpolate()), use_for_calculations__, idx_rf);
+}
+
+nlohmann::json
+Atom_type::serialize() const
+{
+    nlohmann::json dict = {{"header", nlohmann::json::object()}};
+
+    dict["header"]["z_valence"] = zn_;
+    dict["header"]["mesh_size"] = this->num_mt_points();
+    if (is_paw()) {
+        dict["header"]["pseudo_type"] = "PAW";
+    } else if (augment()) {
+        dict["header"]["pseudo_type"] = "US";
+    } else {
+        dict["header"]["pseudo_type"] = "NC";
+    }
+    dict["header"]["number_of_proj"] = num_beta_radial_functions();
+    dict["header"]["element"]        = symbol_;
+    dict["radial_grid"]              = radial_grid().values();
+    dict["local_potential"]          = local_potential();
+    dict["core_charge_density"]      = ps_core_charge_density();
+    dict["total_charge_density"]     = ps_total_charge_density();
+    dict["atomic_wave_functions"]    = nlohmann::json::array();
+    for (auto& e : ps_atomic_wfs_) {
+        auto o                        = nlohmann::json::object();
+        o["angular_momentum"]         = e.am.l();
+        o["radial_function"]          = e.f.values();
+        o["principal_quantum_number"] = e.n;
+        dict["atomic_wave_functions"].push_back(o);
+    }
+    dict["beta_projectors"] = nlohmann::json::array();
+    for (auto& e : beta_radial_functions_) {
+        auto o                = nlohmann::json::object();
+        o["angular_momentum"] = e.first.l();
+        o["radial_function"]  = e.second.values();
+        dict["beta_projectors"].push_back(o);
+    }
+    int nbf = num_beta_radial_functions();
+    std::vector<double> v(nbf * nbf);
+    for (int i = 0; i < nbf; i++) {
+        for (int j = 0; j < nbf; j++) {
+            v[j * nbf + i] = this->d_mtrx_ion()(i, j);
+        }
+    }
+    dict["D_ion"] = v;
+    if (augment_) {
+        dict["augmentation"] = nlohmann::json::array();
+        for (int i = 0; i < nbf; i++) {
+            for (int j = i; j < nbf; j++) {
+                for (int l = 0; l <= 2 * lmax_beta(); l++) {
+                    auto o                = nlohmann::json::object();
+                    o["i"]                = i;
+                    o["j"]                = j;
+                    o["angular_momentum"] = l;
+                    o["radial_function"]  = q_radial_function(i, j, l).values();
+                    dict["augmentation"].push_back(o);
+                }
+            }
+        }
+    }
+    if (is_paw()) {
+        auto paw                      = nlohmann::json::object();
+        paw["ae_core_charge_density"] = paw_ae_core_charge_density();
+        paw["ae_wfc"]                 = nlohmann::json::array();
+        for (auto& e : ae_paw_wfs_) {
+            auto o               = nlohmann::json::object();
+            o["radial_function"] = e;
+            paw["ae_wfc"].push_back(o);
+        }
+        paw["pw_wfc"] = nlohmann::json::array();
+        for (auto& e : ps_paw_wfs_) {
+            auto o               = nlohmann::json::object();
+            o["radial_function"] = e;
+            paw["ps_wfc"].push_back(o);
+        }
+        paw["occupations"] = paw_wf_occ_;
+        dict["paw_data"]   = paw;
+    }
+
+    nlohmann::json result = {{"pseudo_potential", dict}};
+
+    return result;
+}
+
+void
+Atom_type::init_aw_descriptors()
+{
+    RTE_ASSERT(this->lmax_apw() >= -1);
+
+    if (this->lmax_apw() >= 0 && aw_default_l_.size() == 0) {
+        RTE_THROW("default AW descriptor is empty");
+    }
+
+    aw_descriptors_.clear();
+    for (int l = 0; l <= this->lmax_apw(); l++) {
+        aw_descriptors_.push_back(aw_default_l_);
+        for (size_t ord = 0; ord < aw_descriptors_[l].size(); ord++) {
+            aw_descriptors_[l][ord].n = l + 1;
+            aw_descriptors_[l][ord].l = l;
+        }
+    }
+
+    for (size_t i = 0; i < aw_specific_l_.size(); i++) {
+        int l = aw_specific_l_[i][0].l;
+        if (l < this->lmax_apw()) {
+            aw_descriptors_[l] = aw_specific_l_[i];
+        }
+    }
+}
+
+void
+Atom_type::add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
+{
+    if (static_cast<int>(aw_descriptors_.size()) < (l + 1)) {
+        aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
+    }
+
+    radial_solution_descriptor rsd;
+
+    rsd.n = n;
+    if (n == -1) {
+        /* default principal quantum number value for any l */
+        rsd.n = l + 1;
+        for (int ist = 0; ist < num_atomic_levels(); ist++) {
+            /* take next level after the core */
+            if (atomic_level(ist).core && atomic_level(ist).l == l) {
+                rsd.n = atomic_level(ist).n + 1;
+            }
+        }
+    }
+
+    rsd.l        = l;
+    rsd.dme      = dme;
+    rsd.enu      = enu;
+    rsd.auto_enu = auto_enu;
+    aw_descriptors_[l].push_back(rsd);
+}
+
+void
+Atom_type::add_lo_descriptor(int ilo, int n, int l, double enu, int dme, int auto_enu)
+{
+    if ((int)lo_descriptors_.size() == ilo) {
+        angular_momentum am(l);
+        lo_descriptors_.push_back(local_orbital_descriptor(am));
+    } else {
+        if (l != lo_descriptors_[ilo].am.l()) {
+            std::stringstream s;
+            s << "wrong angular quantum number" << std::endl
+              << "atom type id: " << id() << " (" << symbol_ << ")" << std::endl
+              << "idxlo: " << ilo << std::endl
+              << "n: " << l << std::endl
+              << "l: " << n << std::endl
+              << "expected l: " << lo_descriptors_[ilo].am.l() << std::endl;
+            RTE_THROW(s);
+        }
+    }
+
+    radial_solution_descriptor rsd;
+
+    rsd.n = n;
+    if (n == -1) {
+        /* default value for any l */
+        rsd.n = l + 1;
+        for (int ist = 0; ist < num_atomic_levels(); ist++) {
+            if (atomic_level(ist).core && atomic_level(ist).l == l) {
+                /* take next level after the core */
+                rsd.n = atomic_level(ist).n + 1;
+            }
+        }
+    }
+
+    rsd.l        = l;
+    rsd.dme      = dme;
+    rsd.enu      = enu;
+    rsd.auto_enu = auto_enu;
+    lo_descriptors_[ilo].rsd_set.push_back(rsd);
+}
+
+void
+Atom_type::add_ps_atomic_wf(int n__, angular_momentum am__, std::vector<double> f__, double occ__)
+{
+    Spline<double> rwf(radial_grid_, f__);
+    auto d = std::sqrt(inner(rwf, rwf, 0, radial_grid_.num_points()));
+    if (d < 1e-4) {
+        std::stringstream s;
+        s << "small norm (" << d << ") of radial atomic pseudo wave-function for n=" << n__ << " and j=" << am__.j();
+        RTE_THROW(s);
+    }
+
+    ps_atomic_wfs_.emplace_back(n__, am__, occ__, std::move(rwf));
+}
+
+void
+Atom_type::add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
+{
+    /* sanity check */
+    if (l__ > 2 * lmax_beta()) {
+        std::stringstream s;
+        s << "wrong l for Q radial functions of atom type " << label_ << std::endl
+          << "current l: " << l__ << std::endl
+          << "lmax_beta: " << lmax_beta() << std::endl
+          << "maximum allowed l: " << 2 * lmax_beta();
+
+        RTE_THROW(s);
+    }
+
+    if (!augment_) {
+        /* once we add a Q-radial function, we need to augment the charge */
+        augment_ = true;
+        /* number of radial beta-functions */
+        int nbrf              = num_beta_radial_functions();
+        q_radial_functions_l_ = mdarray<Spline<double>, 2>({nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1});
+
+        for (int l = 0; l <= 2 * lmax_beta(); l++) {
+            for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+                q_radial_functions_l_(idx, l) = Spline<double>(radial_grid_);
+            }
+        }
+    }
+
+    q_radial_functions_l_(packed_index(idxrf1__, idxrf2__), l__) = Spline<double>(radial_grid_, qrf__);
 }
 
 } // namespace sirius
