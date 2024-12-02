@@ -440,7 +440,7 @@ class SHT // TODO: better name
         std::complex<double> d{0};
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k3 = -l3; k3 <= l3; k3++) {
-                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3)) *
+                d += std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3) *
                      SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
             }
         }
