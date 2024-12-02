@@ -6303,32 +6303,37 @@ deallocate(file_name_c_type)
 end subroutine sirius_load_state
 
 !
-!> @brief Set density matrix.
+!> @brief Access (get or set) density matrix.
 !> @param [in] gs_handler Ground-state handler.
+!> @param [in] access_type Access type ("get" or "set").
 !> @param [in] ia Index of atom.
-!> @param [in] dm Input density matrix.
+!> @param [inout] dm Input density matrix.
 !> @param [in] ld Leading dimension of the density matrix.
 !> @param [out] error_code Error code.
-subroutine sirius_set_density_matrix(gs_handler,ia,dm,ld,error_code)
+subroutine sirius_access_density_matrix(gs_handler,access_type,ia,dm,ld,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: gs_handler
+character(*), target, intent(in) :: access_type
 integer, target, intent(in) :: ia
-complex(8), target, intent(in) :: dm(ld, ld, 3)
+complex(8), target, intent(inout) :: dm(ld, ld, 3)
 integer, target, intent(in) :: ld
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: gs_handler_ptr
+type(C_PTR) :: access_type_ptr
+character(C_CHAR), target, allocatable :: access_type_c_type(:)
 type(C_PTR) :: ia_ptr
 type(C_PTR) :: dm_ptr
 type(C_PTR) :: ld_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_density_matrix_aux(gs_handler,ia,dm,ld,error_code)&
-&bind(C, name="sirius_set_density_matrix")
+subroutine sirius_access_density_matrix_aux(gs_handler,access_type,ia,dm,ld,error_code)&
+&bind(C, name="sirius_access_density_matrix")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: gs_handler
+type(C_PTR), value :: access_type
 type(C_PTR), value :: ia
 type(C_PTR), value :: dm
 type(C_PTR), value :: ld
@@ -6338,6 +6343,10 @@ end interface
 !
 gs_handler_ptr = C_NULL_PTR
 gs_handler_ptr = C_LOC(gs_handler%handler_ptr_)
+access_type_ptr = C_NULL_PTR
+allocate(access_type_c_type(len(access_type)+1))
+access_type_c_type = string_f2c(access_type)
+access_type_ptr = C_LOC(access_type_c_type)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 dm_ptr = C_NULL_PTR
@@ -6348,32 +6357,39 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_set_density_matrix_aux(gs_handler_ptr,ia_ptr,dm_ptr,ld_ptr,error_code_ptr)
-end subroutine sirius_set_density_matrix
+call sirius_access_density_matrix_aux(gs_handler_ptr,access_type_ptr,ia_ptr,dm_ptr,&
+&ld_ptr,error_code_ptr)
+deallocate(access_type_c_type)
+end subroutine sirius_access_density_matrix
 
 !
-!> @brief Set local occupation matrix of LDA+U+V method.
+!> @brief Access (get or set) local occupation matrix of LDA+U+V method.
 !> @param [in] handler Ground-state handler.
+!> @param [in] access_type Access type ("get" or "set").
 !> @param [in] ia Index of atom.
 !> @param [in] n Principal quantum number.
 !> @param [in] l Orbital quantum number.
 !> @param [in] spin Spin index.
-!> @param [in] occ_mtrx Local occupation matrix.
+!> @param [inout] occ_mtrx Local occupation matrix.
 !> @param [in] ld Leading dimension of the occupation matrix.
 !> @param [out] error_code Error code.
-subroutine sirius_set_local_occupation_matrix(handler,ia,n,l,spin,occ_mtrx,ld,error_code)
+subroutine sirius_access_local_occupation_matrix(handler,access_type,ia,n,l,spin,&
+&occ_mtrx,ld,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: access_type
 integer, target, intent(in) :: ia
 integer, target, intent(in) :: n
 integer, target, intent(in) :: l
 integer, target, intent(in) :: spin
-complex(8), target, intent(in) :: occ_mtrx(ld, ld)
+complex(8), target, intent(inout) :: occ_mtrx(ld, ld)
 integer, target, intent(in) :: ld
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: access_type_ptr
+character(C_CHAR), target, allocatable :: access_type_c_type(:)
 type(C_PTR) :: ia_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
@@ -6383,11 +6399,12 @@ type(C_PTR) :: ld_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_local_occupation_matrix_aux(handler,ia,n,l,spin,occ_mtrx,ld,&
-&error_code)&
-&bind(C, name="sirius_set_local_occupation_matrix")
+subroutine sirius_access_local_occupation_matrix_aux(handler,access_type,ia,n,l,&
+&spin,occ_mtrx,ld,error_code)&
+&bind(C, name="sirius_access_local_occupation_matrix")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: access_type
 type(C_PTR), value :: ia
 type(C_PTR), value :: n
 type(C_PTR), value :: l
@@ -6400,6 +6417,10 @@ end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler%handler_ptr_)
+access_type_ptr = C_NULL_PTR
+allocate(access_type_c_type(len(access_type)+1))
+access_type_c_type = string_f2c(access_type)
+access_type_ptr = C_LOC(access_type_c_type)
 ia_ptr = C_NULL_PTR
 ia_ptr = C_LOC(ia)
 n_ptr = C_NULL_PTR
@@ -6416,38 +6437,43 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_set_local_occupation_matrix_aux(handler_ptr,ia_ptr,n_ptr,l_ptr,spin_ptr,&
-&occ_mtrx_ptr,ld_ptr,error_code_ptr)
-end subroutine sirius_set_local_occupation_matrix
+call sirius_access_local_occupation_matrix_aux(handler_ptr,access_type_ptr,ia_ptr,&
+&n_ptr,l_ptr,spin_ptr,occ_mtrx_ptr,ld_ptr,error_code_ptr)
+deallocate(access_type_c_type)
+end subroutine sirius_access_local_occupation_matrix
 
 !
-!> @brief Set nonlocal part of LDA+U+V occupation matrix.
+!> @brief Access (get or set) nonlocal part of LDA+U+V occupation matrix.
 !> @param [in] handler Ground-state handler.
+!> @param [in] access_type Access type ("get" or "set").
 !> @param [in] atom_pair Index of two atoms in the non-local V correction.
 !> @param [in] n Pair of principal quantum numbers.
 !> @param [in] l Pair of orbital quantum numbers.
 !> @param [in] spin Spin index.
 !> @param [in] T Translation vector that connects two atoms.
-!> @param [in] occ_mtrx Nonlocal occupation matrix.
+!> @param [inout] occ_mtrx Nonlocal occupation matrix.
 !> @param [in] ld1 Leading dimension of the occupation matrix.
 !> @param [in] ld2 Second dimension of the occupation matrix.
 !> @param [out] error_code Error code.
-subroutine sirius_set_nonlocal_occupation_matrix(handler,atom_pair,n,l,spin,T,occ_mtrx,&
-&ld1,ld2,error_code)
+subroutine sirius_access_nonlocal_occupation_matrix(handler,access_type,atom_pair,&
+&n,l,spin,T,occ_mtrx,ld1,ld2,error_code)
 implicit none
 !
 type(sirius_ground_state_handler), target, intent(in) :: handler
+character(*), target, intent(in) :: access_type
 integer, target, intent(in) :: atom_pair(2)
 integer, target, intent(in) :: n(2)
 integer, target, intent(in) :: l(2)
 integer, target, intent(in) :: spin
 integer, target, intent(in) :: T(3)
-complex(8), target, intent(in) :: occ_mtrx(ld1, ld2)
+complex(8), target, intent(inout) :: occ_mtrx(ld1, ld2)
 integer, target, intent(in) :: ld1
 integer, target, intent(in) :: ld2
 integer, optional, target, intent(out) :: error_code
 !
 type(C_PTR) :: handler_ptr
+type(C_PTR) :: access_type_ptr
+character(C_CHAR), target, allocatable :: access_type_c_type(:)
 type(C_PTR) :: atom_pair_ptr
 type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
@@ -6459,11 +6485,12 @@ type(C_PTR) :: ld2_ptr
 type(C_PTR) :: error_code_ptr
 !
 interface
-subroutine sirius_set_nonlocal_occupation_matrix_aux(handler,atom_pair,n,l,spin,&
-&T,occ_mtrx,ld1,ld2,error_code)&
-&bind(C, name="sirius_set_nonlocal_occupation_matrix")
+subroutine sirius_access_nonlocal_occupation_matrix_aux(handler,access_type,atom_pair,&
+&n,l,spin,T,occ_mtrx,ld1,ld2,error_code)&
+&bind(C, name="sirius_access_nonlocal_occupation_matrix")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), value :: handler
+type(C_PTR), value :: access_type
 type(C_PTR), value :: atom_pair
 type(C_PTR), value :: n
 type(C_PTR), value :: l
@@ -6478,6 +6505,10 @@ end interface
 !
 handler_ptr = C_NULL_PTR
 handler_ptr = C_LOC(handler%handler_ptr_)
+access_type_ptr = C_NULL_PTR
+allocate(access_type_c_type(len(access_type)+1))
+access_type_c_type = string_f2c(access_type)
+access_type_ptr = C_LOC(access_type_c_type)
 atom_pair_ptr = C_NULL_PTR
 atom_pair_ptr = C_LOC(atom_pair)
 n_ptr = C_NULL_PTR
@@ -6498,9 +6529,10 @@ error_code_ptr = C_NULL_PTR
 if (present(error_code)) then
 error_code_ptr = C_LOC(error_code)
 endif
-call sirius_set_nonlocal_occupation_matrix_aux(handler_ptr,atom_pair_ptr,n_ptr,l_ptr,&
-&spin_ptr,T_ptr,occ_mtrx_ptr,ld1_ptr,ld2_ptr,error_code_ptr)
-end subroutine sirius_set_nonlocal_occupation_matrix
+call sirius_access_nonlocal_occupation_matrix_aux(handler_ptr,access_type_ptr,atom_pair_ptr,&
+&n_ptr,l_ptr,spin_ptr,T_ptr,occ_mtrx_ptr,ld1_ptr,ld2_ptr,error_code_ptr)
+deallocate(access_type_c_type)
+end subroutine sirius_access_nonlocal_occupation_matrix
 
 !
 !> @brief major version.
