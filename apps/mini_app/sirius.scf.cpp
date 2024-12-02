@@ -82,19 +82,24 @@ preprocess_json_input(std::string fname__)
 std::unique_ptr<Simulation_context>
 create_sim_ctx(std::string fname__, cmd_args const& args__)
 {
-    auto json = preprocess_json_input(fname__);
+    std::string config_string;
+    if (isHDF5(fname__)) {
+        config_string = fname__;
+    } else {
+        auto json     = preprocess_json_input(fname__);
+        config_string = json.dump();
+    }
 
-    auto ctx_ptr            = std::make_unique<Simulation_context>(json.dump(), mpi::Communicator::world());
-    Simulation_context& ctx = *ctx_ptr;
+    auto ctx = std::make_unique<Simulation_context>(config_string);
 
-    auto& inp = ctx.cfg().parameters();
+    auto& inp = ctx->cfg().parameters();
     if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
         RTE_THROW("this is not a Gamma-point calculation")
     }
 
-    ctx.import(args__);
+    ctx->import(args__);
 
-    return ctx_ptr;
+    return ctx;
 }
 
 auto
@@ -108,6 +113,12 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                 ctx.out() << "+----------------------+" << std::endl
                           << "| new SCF ground state |" << std::endl
                           << "+----------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_restart: {
+                ctx.out() << "+--------------------------+" << std::endl
+                          << "| restart SCF ground state |" << std::endl
+                          << "+--------------------------+" << std::endl;
                 break;
             }
             case task_t::ground_state_new_relax: {
@@ -145,11 +156,18 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& density   = dft.density();
 
     if (task_id == task_t::ground_state_restart) {
-        if (!file_exists(storage_file_name)) {
+        auto fname = args.value<fs::path>("input", storage_file_name);
+        if (!isHDF5(fname)) {
+            fname = storage_file_name;
+        }
+        if (!file_exists(fname)) {
             RTE_THROW("storage file is not found");
         }
-        density.load(storage_file_name);
-        potential.load(storage_file_name);
+        density.load(fname);
+        density.generate_paw_density();
+        potential.generate(density, ctx.use_symmetry(), true);
+        Hamiltonian0<double> H0(potential, true);
+        initialize_subspace(kset, H0);
     } else {
         dft.initial_state();
     }
@@ -579,6 +597,8 @@ main(int argn, char** argv)
                    {"iterative_solver.orthogonalize=", ""},
                    {"iterative_solver.early_restart=",
                     "{double} value between 0 and 1 to control the early restart ratio in Davidson"},
+                   {"iterative_solver.energy_tolerance=", "{double} starting tolerance of iterative solver"},
+                   {"iterative_solver.num_steps=", "{int} number of steps in iterative solver"},
                    {"mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)"},
                    {"mixer.beta=", "{double} mixing parameter"},
                    {"volume_scale0=", "{double} starting volume scale for EOS calculation"},
