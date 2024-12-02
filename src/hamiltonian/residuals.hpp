@@ -244,7 +244,7 @@ normalized_preconditioned_residuals(memory_t mem__, wf::spin_range spins__, wf::
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (gamma__ && res__.comm().rank() == 0 && n != 0) {
-        /* this is non-magnetic or collinear case, only single spin channels at once is allowed */
+        /* this is non-magnetic or collinear case, only single spin channel at once is allowed */
         RTE_ASSERT(spins__.size() == 1);
         auto sp = res__.actual_spin_index(spins__.begin());
         if (is_device_memory(mem__)) {
@@ -253,8 +253,7 @@ normalized_preconditioned_residuals(memory_t mem__, wf::spin_range spins__, wf::
 #endif
         } else {
             for (int i = 0; i < n; i++) {
-                res__.pw_coeffs(0, sp, wf::band_index(i)) =
-                        res__.pw_coeffs(0, sp, wf::band_index(i)).real();
+                res__.pw_coeffs(0, sp, wf::band_index(i)) = res__.pw_coeffs(0, sp, wf::band_index(i)).real();
             }
         }
     }
