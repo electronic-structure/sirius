@@ -534,6 +534,8 @@ K_point<T>::save(std::string const& name__, int id__) const
         /* create /K_point_set/ik */
         fout["K_point_set"].create_node(id__);
         fout["K_point_set"][id__].write("vk", &vk_[0], 3);
+        auto ngkvec = num_gkvec();
+        fout["K_point_set"][id__].write("num_gkvec", &ngkvec, 1);
         fout["K_point_set"][id__].write("band_energies", band_energies_);
         fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
 
@@ -593,16 +595,26 @@ template <typename T>
 void
 K_point<T>::load(HDF5_tree h5in, int id__)
 {
-
     h5in[id__].read("band_energies", band_energies_);
     h5in[id__].read("band_occupancies", band_occupancies_);
+
+    int gkvec_old;
+    h5in[id__].read("num_gkvec", &gkvec_old, 1);
     
+    if( gkvec_old != num_gkvec() ) {
+        RTE_THROW("Number of gkvec differs in current simulation and read wavefunctions");
+    }
+
     /* read ordered G vectors on mdarray */
     mdarray<int, 2> gv({3, num_gkvec()});
     h5in[id__].read("gvec", gv);
 
     /* fill G vectors with read array */
-    
+    mdarray<int, 1> igidx( { num_gkvec() } );
+    for( int ig = 0; ig < num_gkvec(); ++ig ) {   
+        igidx( ig ) = gkvec().index_by_gvec ( r3::vector<int>( gv(0, ig), gv(1, ig), gv(2, ig) ) );  
+    }  
+
     /* read pw coefficients */
     std::vector<std::complex<T>> wf_tmp(num_gkvec());
 
@@ -610,12 +622,16 @@ K_point<T>::load(HDF5_tree h5in, int id__)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             h5in[id__]["bands"][ibnd]["spinor_wave_function"][ispn].read("pw", 
                 reinterpret_cast<T*>(wf_tmp.data()), static_cast<int>(wf_tmp.size() * 2));
+
+            for( int ig = 0; ig < num_gkvec(); ++ig ) {
+                auto ig_loc = igidx( ig );
+                if ( ig_loc != -1 ) {
+                    spinor_wave_functions_->pw_coeffs( ig_loc, sirius::wf::spin_index(ispn), sirius::wf::band_index(ibnd) )
+                                            = wf_tmp[ig] ;
+                }
+            }  
         }
     }
-
-
-    //== h5in[id].read_mdarray("fv_eigen_vectors", fv_eigen_vectors_panel_);
-    //== h5in[id].read_mdarray("sv_eigen_vectors", sv_eigen_vectors_);
 }
 
 //== void K_point::save_wave_functions(int id)
