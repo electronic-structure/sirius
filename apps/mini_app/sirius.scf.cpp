@@ -32,6 +32,76 @@ struct task_t
     static const int ground_state_new_vcrelax = 6;
 };
 
+void
+json_output_common(json& dict__)
+{
+    dict__["git_hash"]         = sirius::git_hash();
+    dict__["comm_world_size"]  = mpi::Communicator::world().size();
+    dict__["threads_per_rank"] = omp_get_max_threads();
+}
+
+void
+rewrite_relative_paths(json& dict__, fs::path const& working_directory = fs::current_path())
+{
+    // the json.unit_cell.atom_files[] dict might contain relative paths,
+    // which should be relative to the json file. So better make them
+    // absolute such that the simulation context does not have to be
+    // aware of paths.
+    if (!dict__.count("unit_cell")) {
+        return;
+    }
+
+    auto& section = dict__["unit_cell"];
+
+    if (!section.count("atom_files")) {
+        return;
+    }
+
+    auto& atom_files = section["atom_files"];
+
+    for (auto& label : atom_files.items()) {
+        label.value() = working_directory / std::string(label.value());
+    }
+}
+
+auto
+preprocess_json_input(std::string fname__)
+{
+    if (fname__.find("{") == std::string::npos) {
+        // If it's a file, set the working directory to that file.
+        auto json = read_json_from_file(fname__);
+        rewrite_relative_paths(json, fs::path{fname__}.parent_path());
+        return json;
+    } else {
+        // Raw JSON input
+        auto json = read_json_from_string(fname__);
+        rewrite_relative_paths(json);
+        return json;
+    }
+}
+
+std::unique_ptr<Simulation_context>
+create_sim_ctx(std::string fname__, cmd_args const& args__)
+{
+    std::string config_string;
+    if (isHDF5(fname__)) {
+        config_string = fname__;
+    } else {
+        auto json = preprocess_json_input(fname__);
+        config_string = json.dump();
+    }
+
+    auto ctx = std::make_unique<Simulation_context>(config_string);
+
+    auto& inp = ctx->cfg().parameters();
+    if (inp.gamma_point() && !(inp.ngridk()[0] * inp.ngridk()[1] * inp.ngridk()[2] == 1)) {
+        RTE_THROW("this is not a Gamma-point calculation")
+    }
+
+    ctx->import(args__);
+
+    return ctx;
+}
 
 auto
 ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int write_output)
@@ -44,6 +114,12 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
                 ctx.out() << "+----------------------+" << std::endl
                           << "| new SCF ground state |" << std::endl
                           << "+----------------------+" << std::endl;
+                break;
+            }
+            case task_t::ground_state_restart: {
+                ctx.out() << "+--------------------------+" << std::endl
+                          << "| restart SCF ground state |" << std::endl
+                          << "+--------------------------+" << std::endl;
                 break;
             }
             case task_t::ground_state_new_relax: {
@@ -81,11 +157,19 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     auto& density   = dft.density();
 
     if (task_id == task_t::ground_state_restart) {
-        if (!file_exists(storage_file_name)) {
+        auto fname = args.value<fs::path>("input", storage_file_name);
+        if (!isHDF5(fname)) {
+            fname = storage_file_name;
+        }
+        if (!file_exists(fname)) {
             RTE_THROW("storage file is not found");
         }
-        density.load(storage_file_name);
-        potential.load(storage_file_name);
+        density.load(fname);
+        density.generate_paw_density();
+        //potential.load(fname);
+        potential.generate(density, ctx.use_symmetry(), true);
+        Hamiltonian0<double> H0(potential, true);
+        initialize_subspace(kset, H0);
     } else {
         dft.initial_state();
     }
@@ -158,6 +242,10 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
     }
 
     if (write_state && write_output) {
+        std::cout << "Saving wf.." << std::endl;
+        kset.save("wf.h5");
+        std::cout << " wf saved.." << std::endl;
+
         json dict;
         json_output_common(dict);
 
@@ -261,11 +349,11 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             ctx.comm().abort(1);
         }
         if (result.count("magnetisation") && dict_ref["ground_state"].count("magnetisation")) {
-            double diff{0};
+            double max_diff{0};
             auto t1 = result["magnetisation"]["total"].get<std::vector<double>>();
             auto t2 = dict_ref["ground_state"]["magnetisation"]["total"].get<std::vector<double>>();
             for (int x : {0, 1, 2}) {
-                diff += std::abs(t1[x] - t2[x]);
+                max_diff = std::max(max_diff, std::abs(t1[x] - t2[x]));
             }
             auto v1 = result["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
             auto v2 = dict_ref["ground_state"]["magnetisation"]["atoms"].get<std::vector<std::vector<double>>>();
@@ -275,10 +363,10 @@ ground_state(Simulation_context& ctx, int task_id, cmd_args const& args, int wri
             }
             for (size_t i = 0; i < v1.size(); i++) {
                 for (int x : {0, 1, 2}) {
-                    diff += std::abs(v1[i][x] - v2[i][x]);
+                    max_diff = std::max(max_diff, std::abs(v1[i][x] - v2[i][x]));
                 }
             }
-            if (diff > 1e-5) {
+            if (max_diff > 1e-5) {
                 std::cout << "magnetisations is different!" << std::endl;
                 ctx.comm().abort(5);
             }
@@ -499,35 +587,35 @@ int
 main(int argn, char** argv)
 {
     std::feclearexcept(FE_ALL_EXCEPT);
-    cmd_args args;
-    args.register_key("--input=", "{string} input file name");
-    args.register_key("--output=", "{string} output file name");
-    args.register_key("--task=", "{int} task id");
-    args.register_key("--aiida_output", "write output for AiiDA");
-    args.register_key("--test_against=", "{string} json file with reference values");
-    args.register_key("--repeat_update=", "{int} number of times to repeat update()");
-    args.register_key("--fpe", "enable check of floating-point exceptions using GNUC library");
-    args.register_key("--control.processing_unit=", "");
-    args.register_key("--control.verbosity=", "");
-    args.register_key("--control.verification=", "");
-    args.register_key("--control.mpi_grid_dims=", "");
-    args.register_key("--control.std_evp_solver_name=", "");
-    args.register_key("--control.gen_evp_solver_name=", "");
-    args.register_key("--control.fft_mode=", "");
-    args.register_key("--control.memory_usage=", "");
-    args.register_key("--parameters.ngridk=", "");
-    args.register_key("--parameters.gamma_point=", "");
-    args.register_key("--parameters.pw_cutoff=", "");
-    args.register_key("--parameters.gk_cutoff=", "");
-    args.register_key("--iterative_solver.orthogonalize=", "");
-    args.register_key("--iterative_solver.early_restart=",
-                      "{double} value between 0 and 1 to control the early restart ratio in Davidson");
-    args.register_key("--mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)");
-    args.register_key("--mixer.beta=", "{double} mixing parameter");
-    args.register_key("--volume_scale0=", "{double} starting volume scale for EOS calculation");
-    args.register_key("--volume_scale1=", "{double} final volume scale for EOS calculation");
-
-    args.parse_args(argn, argv);
+    cmd_args args(argn, argv,
+                  {{"input=", "{string} input file name"},
+                   {"output=", "{string} output file name"},
+                   {"task=", "{int} task id"},
+                   {"aiida_output", "write output for AiiDA"},
+                   {"test_against=", "{string} json file with reference values"},
+                   {"repeat_update=", "{int} number of times to repeat update()"},
+                   {"fpe", "enable check of floating-point exceptions using GNUC library"},
+                   {"control.processing_unit=", ""},
+                   {"control.verbosity=", ""},
+                   {"control.verification=", ""},
+                   {"control.mpi_grid_dims=", ""},
+                   {"control.std_evp_solver_name=", ""},
+                   {"control.gen_evp_solver_name=", ""},
+                   {"control.fft_mode=", ""},
+                   {"control.memory_usage=", ""},
+                   {"parameters.ngridk=", ""},
+                   {"parameters.gamma_point=", ""},
+                   {"parameters.pw_cutoff=", ""},
+                   {"parameters.gk_cutoff=", ""},
+                   {"iterative_solver.orthogonalize=", ""},
+                   {"iterative_solver.early_restart=",
+                    "{double} value between 0 and 1 to control the early restart ratio in Davidson"},
+                   {"iterative_solver.energy_tolerance=", "{double} starting tolerance of iterative solver"},
+                   {"iterative_solver.num_steps=", "{int} number of steps in iterative solver"},
+                   {"mixer.type=", "{string} mixer name (anderson, anderson_stable, broyden2, linear)"},
+                   {"mixer.beta=", "{double} mixing parameter"},
+                   {"volume_scale0=", "{double} starting volume scale for EOS calculation"},
+                   {"volume_scale1=", "{double} final volume scale for EOS calculation"}});
 
 #if defined(_GNU_SOURCE)
     if (args.exist("fpe")) {

@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(SIRIUS
   DESCRIPTION "Domain specific library for electronic structure calculations"
   HOMEPAGE_URL "https://github.com/electronic-structure/SIRIUS"
-  VERSION 7.5.3
+  VERSION 7.6.1
   LANGUAGES CXX C)
 
 # for CUDA_ARCHITECTURES
@@ -315,5 +315,6 @@ if(SIRIUS_BUILD_APPS)
   endif()
   add_subdirectory(apps/upf)
   add_subdirectory(apps/utils)
+  add_subdirectory(apps/sirius2wannier)
 endif(SIRIUS_BUILD_APPS)
 add_subdirectory(doc)

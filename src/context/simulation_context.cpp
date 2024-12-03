@@ -391,7 +391,7 @@ Simulation_context::initialize()
     for (int i : {0, 1}) {
         if (evsn[i] == "auto") {
             /* conditions for sequential diagonalization */
-            if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
+            if (comm_band().size() == 1 || npc == 1 || npr == 1 || !(is_scalapack || is_elpa || is_dlaf)) {
                 if (full_potential()) {
                     if (is_magma) {
                         evsn[i] = "magma";
@@ -482,26 +482,6 @@ Simulation_context::initialize()
     /* set the smearing */
     smearing(cfg().parameters().smearing());
 
-    /* create auxiliary mpi grid for symmetrization */
-    auto make_mpi_grid_mt_sym = [](int na, int np) {
-        std::vector<int> result;
-        for (int ia = 1; ia <= na; ia++) {
-            if (na % ia == 0 && np % ia == 0) {
-                result = std::vector<int>({ia, np / ia});
-            }
-        }
-        return result;
-    };
-
-    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
-        if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
-            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
-            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
-        } else {
-            mpi_grid_mt_sym_.push_back(nullptr);
-        }
-    }
-
     /* create G-vectors on the first call to update() */
     update();
 
@@ -518,7 +498,8 @@ Simulation_context::initialize()
         if (comm().rank() == 0) {
             pout << "MPI rank placement" << std::endl;
             pout << hbar(136, '-') << std::endl;
-            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, col"
+            pout << "             |  comm tot, band, k | comm fft, ortho | mpi_grid tot, row, col | blacs tot, row, "
+                    "col |     UUID"
                  << std::endl;
         }
         pout << std::setw(12) << hostname() << " | " << std::setw(6) << comm().rank() << std::setw(6)
@@ -527,7 +508,8 @@ Simulation_context::initialize()
              << std::setw(6) << mpi_grid_->communicator(3).rank() << std::setw(6)
              << mpi_grid_->communicator(1 << 0).rank() << std::setw(6) << mpi_grid_->communicator(1 << 1).rank()
              << "   | " << std::setw(6) << blacs_grid().comm().rank() << std::setw(6) << blacs_grid().comm_row().rank()
-             << std::setw(6) << blacs_grid().comm_col().rank() << std::endl;
+             << std::setw(6) << blacs_grid().comm_col().rank() << "  |  " << acc::get_uuid(acc::get_device_id())
+             << std::endl;
         rte::ostream(this->out(), "info") << pout.flush(0);
     }
 
@@ -613,39 +595,44 @@ Simulation_context::print_info(std::ostream& out__) const
     {
         rte::ostream os(out__, "info");
         os << "total nuclear charge               : " << unit_cell().total_nuclear_charge() << std::endl
-           << "number of core electrons           : " << unit_cell().num_core_electrons() << std::endl
-           << "number of valence electrons        : " << unit_cell().num_valence_electrons() << std::endl
-           << "total number of electrons          : " << unit_cell().num_electrons() << std::endl
-           << "extra charge                       : " << cfg().parameters().extra_charge() << std::endl
-           << "total number of aw basis functions : " << unit_cell().mt_aw_basis_size() << std::endl
-           << "total number of lo basis functions : " << unit_cell().mt_lo_basis_size() << std::endl
-           << "number of first-variational states : " << num_fv_states() << std::endl
+           << "  number of core electrons         : " << unit_cell().num_core_electrons() << std::endl
+           << "  number of valence electrons      : " << unit_cell().num_valence_electrons() << std::endl
+           << "  total number of electrons        : " << unit_cell().num_electrons() << std::endl
+           << "  extra charge                     : " << cfg().parameters().extra_charge() << std::endl
            << "number of bands                    : " << num_bands() << std::endl
            << "number of spins                    : " << num_spins() << std::endl
            << "number of magnetic dimensions      : " << num_mag_dims() << std::endl
            << "number of spinor components        : " << num_spinor_comp() << std::endl
-           << "number of spinors per band index   : " << num_spinors() << std::endl
-           << "lmax_apw                           : " << unit_cell().lmax_apw() << std::endl
-           << "lmax_rho                           : " << lmax_rho() << std::endl
-           << "lmax_pot                           : " << lmax_pot() << std::endl
-           << "lmax_rf                            : " << unit_cell().lmax() << std::endl
+           << "number of spinors per band index   : " << num_spinors() << std::endl;
+        if (this->full_potential()) {
+            os << "total number of aw basis functions : " << unit_cell().mt_aw_basis_size() << std::endl
+               << "total number of lo basis functions : " << unit_cell().mt_lo_basis_size() << std::endl
+               << "number of first-variational states : " << num_fv_states() << std::endl
+               << "lmax_apw                           : " << unit_cell().lmax_apw() << std::endl
+               << "lmax_rho                           : " << lmax_rho() << std::endl
+               << "lmax_pot                           : " << lmax_pot() << std::endl;
+            std::string reln[]  = {"valence relativity                 : ", "core relativity                    : "};
+            relativity_t relt[] = {valence_relativity_, core_relativity_};
+            std::map<relativity_t, std::string> const relm = {{relativity_t::none, "none"},
+                                                              {relativity_t::koelling_harmon, "Koelling-Harmon"},
+                                                              {relativity_t::zora, "zora"},
+                                                              {relativity_t::iora, "iora"},
+                                                              {relativity_t::dirac, "Dirac"}};
+            for (int i = 0; i < 2; i++) {
+                os << reln[i] << relm.at(relt[i]) << std::endl;
+            }
+        } else {
+            os << "total number of beta projectors    : " << unit_cell().mt_aw_basis_size() << std::endl
+               << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
+               << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl;
+        }
+        os << "lmax_rf                            : " << unit_cell().lmax() << std::endl
            << "smearing type                      : " << cfg().parameters().smearing().c_str() << std::endl
            << "smearing width                     : " << smearing_width() << std::endl
            << "cyclic block size                  : " << cyclic_block_size() << std::endl
            << "|G+k| cutoff                       : " << gk_cutoff() << std::endl
-           << "symmetry                           : " << std::boolalpha << use_symmetry() << std::endl
+           << "use_symmetry                       : " << std::boolalpha << use_symmetry() << std::endl
            << "so_correction                      : " << std::boolalpha << so_correction() << std::endl;
-
-        std::string reln[]  = {"valence relativity                 : ", "core relativity                    : "};
-        relativity_t relt[] = {valence_relativity_, core_relativity_};
-        std::map<relativity_t, std::string> const relm = {{relativity_t::none, "none"},
-                                                          {relativity_t::koelling_harmon, "Koelling-Harmon"},
-                                                          {relativity_t::zora, "zora"},
-                                                          {relativity_t::iora, "iora"},
-                                                          {relativity_t::dirac, "Dirac"}};
-        for (int i = 0; i < 2; i++) {
-            os << reln[i] << relm.at(relt[i]) << std::endl;
-        }
 
         std::string evsn[]     = {"standard eigen-value solver        : ", "generalized eigen-value solver     : "};
         la::ev_solver_t evst[] = {std_evp_solver().type(), gen_evp_solver().type()};
@@ -656,6 +643,18 @@ Simulation_context::print_info(std::ostream& out__) const
                 {la::ev_solver_t::cusolver, "cuSOLVER"}};
         for (int i = 0; i < 2; i++) {
             os << evsn[i] << evsm.at(evst[i]) << std::endl;
+        }
+        os << "diagonalization method             : " << cfg().iterative_solver().type() << std::endl;
+        if (cfg().iterative_solver().type() != "exact") {
+            os << "  number of steps                  : " << cfg().iterative_solver().num_steps() << std::endl
+               << "  subspace size                    : " << cfg().iterative_solver().subspace_size() << std::endl
+               << "  early restart ratio              : " << cfg().iterative_solver().early_restart() << std::endl;
+        }
+        os << "mixer                              : " << cfg().mixer().type() << std::endl
+           << "  mixing beta                      : " << cfg().mixer().beta() << std::endl
+           << "  max_history                      : " << cfg().mixer().max_history() << std::endl;
+        if (!this->full_potential()) {
+            os << "  use_hartree                      : " << std::boolalpha << cfg().mixer().use_hartree() << std::endl;
         }
         os << "processing unit                    : ";
         switch (processing_unit()) {
@@ -671,17 +670,6 @@ Simulation_context::print_info(std::ostream& out__) const
             }
         }
         os << std::endl
-           << "iterative solver                   : " << cfg().iterative_solver().type() << std::endl
-           << "number of steps                    : " << cfg().iterative_solver().num_steps() << std::endl
-           << "subspace size                      : " << cfg().iterative_solver().subspace_size() << std::endl
-           << "early restart ratio                : " << cfg().iterative_solver().early_restart() << std::endl
-           << "precision_wf                       : " << cfg().parameters().precision_wf() << std::endl
-           << "precision_hs                       : " << cfg().parameters().precision_hs() << std::endl
-           << "mixer                              : " << cfg().mixer().type() << std::endl
-           << "mixing beta                        : " << cfg().mixer().beta() << std::endl
-           << "max_history                        : " << cfg().mixer().max_history() << std::endl
-           << "use_hartree                        : " << std::boolalpha << cfg().mixer().use_hartree() << std::endl
-           << std::endl
            << "spglib version: " << spg_get_major_version() << "." << spg_get_minor_version() << "."
            << spg_get_micro_version() << std::endl;
     }
@@ -743,9 +731,17 @@ Simulation_context::print_info(std::ostream& out__) const
         os << "approximate number of G+k vectors        : " << ngk << std::endl
            << "approximate number of G vectors          : " << ng << std::endl
            << "approximate number of coarse G vectors   : " << ngc << std::endl;
-        size_t wf_size = ngk * num_bands() * num_spins() * 16;
-        os << "approximate size of wave-functions for each k-point: " << static_cast<int>(wf_size >> 20) << " Mb,  "
-           << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
+
+        /* wave-functions + beta projectors */
+        size_t nwf = num_bands() * num_spins() + unit_cell().mt_aw_basis_size();
+        /* for Hubbard correction */
+        if (this->hubbard_correction()) {
+            nwf += 2 * (this->unit_cell().num_hubbard_wf().first + this->unit_cell().num_ps_atomic_wf().first);
+        }
+
+        size_t wf_size = ngk * nwf * 16;
+        os << "approximate size of wave-function objects for each k-point: " << static_cast<int>(wf_size >> 20)
+           << " Mb,  " << static_cast<int>((wf_size / comm_band().size()) >> 20) << " Mb/rank" << std::endl;
 
         /* number of simultaneously treated spin components */
         int num_sc = (num_mag_dims() == 3) ? 2 : 1;
@@ -822,17 +818,39 @@ Simulation_context::update()
     /* update unit cell (reciprocal lattice, etc.) */
     unit_cell().update();
 
-    /* cache rotation symmetry matrices */
-    int lmax  = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho()) : 2 * this->unit_cell().lmax();
-    int lmmax = sf::lmmax(lmax);
-    rotm_.resize(this->unit_cell().symmetry().size());
-    /* loop over crystal symmetries */
-    #pragma omp parallel for
-    for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
-        rotm_[i] = mdarray<double, 2>({lmmax, lmmax});
-        /* compute Rlm rotation matrix */
-        sht::rotation_matrix(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
-                             this->unit_cell().symmetry()[i].spg_op.proper, rotm_[i]);
+    if (unit_cell().num_atoms()) {
+        /* cache rotation symmetry matrices */
+        int lmax = this->full_potential() ? std::max(this->lmax_pot(), this->lmax_rho())
+                                          : std::max(2 * this->unit_cell().lmax(), 4);
+        rotm_.resize(this->unit_cell().symmetry().size());
+        /* loop over crystal symmetries */
+        #pragma omp parallel for
+        for (int i = 0; i < this->unit_cell().symmetry().size(); i++) {
+            /* compute Rlm rotation matrix */
+            rotm_[i] = sht::rotation_matrix<double>(lmax, this->unit_cell().symmetry()[i].spg_op.euler_angles,
+                                                    this->unit_cell().symmetry()[i].spg_op.proper);
+        }
+    }
+
+    /* create auxiliary mpi grid for symmetrization */
+    auto make_mpi_grid_mt_sym = [](int na, int np) {
+        std::vector<int> result;
+        for (int ia = 1; ia <= na; ia++) {
+            if (na % ia == 0 && np % ia == 0) {
+                result = std::vector<int>({ia, np / ia});
+            }
+        }
+        return result;
+    };
+
+    mpi_grid_mt_sym_.clear();
+    for (int ic = 0; ic < unit_cell().num_atom_symmetry_classes(); ic++) {
+        if (this->full_potential() || unit_cell().atom_symmetry_class(ic).atom_type().is_paw()) {
+            auto r = make_mpi_grid_mt_sym(unit_cell().atom_symmetry_class(ic).num_atoms(), this->comm().size());
+            mpi_grid_mt_sym_.push_back(std::make_unique<mpi::Grid>(r, this->comm()));
+        } else {
+            mpi_grid_mt_sym_.push_back(nullptr);
+        }
     }
 
     /* get new reciprocal vector */
@@ -969,7 +987,7 @@ Simulation_context::update()
         }
     }
 
-    if (unit_cell().num_atoms()) {
+    if (unit_cell().num_atoms() && this->num_mag_dims()) {
         init_atoms_to_grid_idx(cfg().control().rmt_max());
     }
 
@@ -1148,13 +1166,22 @@ Simulation_context::update()
 void
 Simulation_context::create_storage_file(std::string name__) const
 {
+    if (!initialized_) {
+        RTE_THROW("Simulation_context must be initialized first");
+    }
     if (comm_.rank() == 0) {
         /* create new hdf5 file */
         HDF5_tree fout(name__, hdf5_access_t::truncate);
         fout.create_node("parameters");
         fout.create_node("effective_potential");
         fout.create_node("effective_magnetic_field");
+        fout.create_node("xc_energy_density");
+        fout.create_node("xc_potential");
         fout.create_node("density");
+        fout.create_node("density_matrix");
+        for (int ia = 0; ia < this->unit_cell().num_atoms(); ia++) {
+            fout["density_matrix"].create_node(ia);
+        }
         fout.create_node("magnetization");
 
         for (int j = 0; j < num_mag_dims(); j++) {
@@ -1178,10 +1205,16 @@ Simulation_context::create_storage_file(std::string name__) const
 
         fout.create_node("unit_cell");
         fout["unit_cell"].create_node("atoms");
-        for (int j = 0; j < unit_cell().num_atoms(); j++) {
-            fout["unit_cell"]["atoms"].create_node(j);
-            fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
+        fout["unit_cell"].create_node("atom_types");
+        for (int ia = 0; ia < unit_cell().num_atoms(); ia++) {
+            fout["unit_cell"]["atoms"].create_node(ia);
+            fout["unit_cell"]["atoms"][ia].write("mt_basis_size", unit_cell().atom(ia).mt_basis_size());
         }
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            fout["unit_cell"]["atom_types"].create_node(iat);
+            fout["unit_cell"]["atom_types"][iat].write("config", unit_cell().atom_type(iat).serialize().dump());
+        }
+        fout.write("config", this->serialize()["config"].dump());
     }
     comm_.barrier();
 }

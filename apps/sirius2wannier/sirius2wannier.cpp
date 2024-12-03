@@ -1,29 +1,36 @@
-/* This file is part of SIRIUS electronic structure library.
- *
- * Copyright (c), ETH Zurich.  All rights reserved.
- *
- * Please, refer to the LICENSE file in the root directory.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-
 #include "apps.hpp"
 
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
+    cmd_args args(argn, argv,
+                  {{"input=", "{string} input file name"}});
+
     sirius::initialize(1);
 
+
     /* get the input file name */
-    std::string fname = "sirius.json";
+    auto fpath = args.value<fs::path>("input", "sirius.json");
 
-    /* create K_point_set */
+    if (fs::is_directory(fpath)) {
+        fpath /= "sirius.json";
+    }
+
+    if (!fs::exists(fpath)) {
+        if (mpi::Communicator::world().rank() == 0) {
+            std::cout << "input file does not exist" << std::endl;
+        }
+        exit(1);
+    }
+    auto fname = fpath.string();
+    
+    /* create simulation context */
     auto ctx = create_sim_ctx(fname, args);
-    K_point_set kset(*ctx);
+    ctx->initialize();
 
-    /* get wavefunctions from previous runs */
-    kset.load();
+    /* read the wf */
+    bool reduce_kp = ctx->use_symmetry() && ctx->cfg().parameters().use_ibz();
+    K_point_set kset(*ctx, ctx->cfg().parameters().ngridk(), ctx->cfg().parameters().shiftk(), reduce_kp);
 
-    kset.generate_w90_coeffs();
+    kset.load("wf.h5");
 }
