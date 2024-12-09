@@ -122,8 +122,8 @@ class hubbard_orbital_descriptor
                         for (int k = 0; k < 2 * l; k += 2) {
                             double sum = 0.0;
                             for (int q = -k; q <= k; q++) {
-                                sum += SHT::gaunt_rlm_ylm_rlm(l, k, l, m1, q, m2) *
-                                       SHT::gaunt_rlm_ylm_rlm(l, k, l, m3, q, m4);
+                                sum += std::real(SHT::gaunt_ryr(l, k, l, m1, q, m2) *
+                                                 SHT::gaunt_ryr(l, k, l, m3, q, m4));
                             }
                             /* according to PRB 52, R5467 it is 4 \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
                                only a_{k=0} a_{k=2}, a_{k=4} are considered */

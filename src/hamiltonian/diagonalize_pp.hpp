@@ -269,7 +269,7 @@ diag_S_davidson(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__)
     auto result = davidson<T, F, davidson_evp_t::overlap>(
             Hk__, kp__, wf::num_bands(nevec), num_mag_dims, *psi, [](int i, int ispn) { return 1e-10; },
             itso.residual_tolerance(), itso.num_steps(), itso.locking(), 10, itso.converge_by_energy(),
-            itso.extra_ortho(), std::cout, 0);
+            itso.extra_ortho(), ctx.out(), 0);
 
     mdarray<real_type<F>, 1> eval({nevec});
     for (int i = 0; i < nevec; i++) {
@@ -304,7 +304,7 @@ diagonalize_pp(Hamiltonian_k<T> const& Hk__, K_point<T>& kp__, double itsol_tol_
         };
 
         std::stringstream s;
-        std::ostream* out = (kp__.comm().rank() == 0) ? &std::cout : &s;
+        std::ostream* out = (kp__.comm().rank() == 0) ? &ctx.out() : &s;
         result            = davidson<T, F, davidson_evp_t::hamiltonian>(
                 Hk__, kp__, wf::num_bands(ctx.num_bands()), wf::num_mag_dims(ctx.num_mag_dims()),
                 kp__.spinor_wave_functions(), tolerance, itso.residual_tolerance(), itsol_num_steps__, itso.locking(),

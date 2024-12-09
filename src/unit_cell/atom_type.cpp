@@ -222,7 +222,7 @@ Atom_type::init()
         using gc_z   = Gaunt_coefficients<std::complex<double>>;
         gaunt_coefs_ = std::make_unique<gc_z>(std::max(this->lmax_apw(), this->lmax_lo()),
                                               std::max(parameters_.lmax_rho(), parameters_.lmax_pot()),
-                                              std::max(this->lmax_apw(), this->lmax_lo()), SHT::gaunt_hybrid);
+                                              std::max(this->lmax_apw(), this->lmax_lo()), SHT::gaunt_yry);
     }
 
     initialized_ = true;
