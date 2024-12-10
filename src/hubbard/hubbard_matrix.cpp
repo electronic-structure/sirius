@@ -182,13 +182,14 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
     auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
     auto const& atom  = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl__].first);
 
-    out__ << "level : " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).n();
+    out__ << "atom : " << atom.type().label();
+    out__ << " level : " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).n();
     out__ << " l: " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l() << std::endl;
     const int l = atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).l();
     if (ctx_.num_mag_dims() != 3) {
         int mmax = 2 * l + 1;
         for (int is = 0; is < ctx_.num_spins(); is++) {
-            out__ << hbar(width * mmax, '-') << std::endl;
+            out__ << hbar(width * mmax, '-') << " SPIN: " << is + 1 << std::endl;
             bool has_imag{false};
             for (int m = 0; m < mmax; m++) {
                 for (int mp = 0; mp < mmax; mp++) {
