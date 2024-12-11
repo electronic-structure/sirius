@@ -35,11 +35,11 @@ Potential::init_PAW()
             [this](int ia) { return lmax_t(2 * this->unit_cell_.atom(ia).type().indexr().lmax()); });
 
     /* initialize dij matrix */
-    paw_dij_.resize(unit_cell_.num_paw_atoms());
+    d_mtrx_paw_.resize(unit_cell_.num_paw_atoms());
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         int ia      = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
-        paw_dij_[i] = mdarray<double, 3>(
-                {unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(), ctx_.num_mag_dims() + 1});
+        int nbf     = unit_cell_.atom(ia).mt_basis_size();
+        d_mtrx_paw_[i] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1});
     }
 }
 
@@ -90,11 +90,11 @@ Potential::generate_PAW_effective_potential(Density const& density)
     #pragma omp parallel for
     for (auto it : unit_cell_.spl_num_paw_atoms()) {
         auto ia = unit_cell_.paw_atom_index(it.i);
-        calc_PAW_local_Dij(ia, paw_dij_[it.i]);
+        calc_PAW_local_Dij(ia, d_mtrx_paw_[it.i]);
     }
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
         auto location = unit_cell_.spl_num_paw_atoms().location(typename paw_atom_index_t::global(i));
-        comm_.bcast(paw_dij_[i].at(memory_t::host), paw_dij_[i].size(), location.ib);
+        comm_.bcast(d_mtrx_paw_[i].at(memory_t::host), d_mtrx_paw_[i].size(), location.ib);
     }
 
     /* add paw Dij to uspp Dij */
@@ -106,7 +106,7 @@ Potential::generate_PAW_effective_potential(Density const& density)
         for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
             for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                 for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                    atom.d_mtrx(ib1, ib2, imagn) += paw_dij_[i](ib1, ib2, imagn);
+                    d_mtrx_[ia](ib1, ib2, imagn) += d_mtrx_paw_[i](ib1, ib2, imagn);
                 }
             }
         }
