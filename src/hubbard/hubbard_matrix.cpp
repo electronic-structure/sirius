@@ -181,7 +181,7 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
 
     auto print_number = [&](double x) { out__ << std::setw(width) << std::setprecision(prec) << std::fixed << x; };
     auto const& atom  = ctx_.unit_cell().atom(atomic_orbitals_[at_lvl__].first);
-    auto solver = la::Eigensolver_factory("lapack");
+    auto solver       = la::Eigensolver_factory("lapack");
 
     out__ << "atom : " << atom.type().label();
     out__ << " level : " << atom.type().lo_descriptor_hub(atomic_orbitals_[at_lvl__].second).n();
