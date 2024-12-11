@@ -154,7 +154,7 @@ get_device_t(std::string name__)
 /** Allocate a memory block of the memory_t type. Return a nullptr if this memory is not available, otherwise
  *  return a pointer to an allocated block. */
 template <typename T>
-inline T*
+static inline T*
 allocate(size_t n__, memory_t M__)
 {
     switch (M__) {
@@ -185,7 +185,7 @@ allocate(size_t n__, memory_t M__)
 }
 
 /// Deallocate pointer of a given memory type.
-inline void
+static inline void
 deallocate(void* ptr__, memory_t M__)
 {
     switch (M__) {
@@ -256,7 +256,7 @@ copy(memory_t from_mem__, T const* from_ptr__, memory_t to_mem__, T* to_ptr__, s
 
 /// Allocate n elements and return a unique pointer.
 template <typename T>
-inline auto
+static inline auto
 get_unique_ptr(size_t n__, memory_t M__)
 {
     return std::unique_ptr<T, std::function<void(void*)>>(allocate<T>(n__, M__),
@@ -275,9 +275,9 @@ class memory_pool
     memory_t M_;
 
 #ifdef SIRIUS_USE_MEMORY_POOL
-    /// handler to umpire allocator_
+    /// Handler to umpire allocator.
     umpire::Allocator allocator_;
-    /// handler to umpire memory pool
+    /// Handler to umpire memory pool.
     umpire::Allocator memory_pool_allocator_;
 #endif
   public:
@@ -340,7 +340,7 @@ class memory_pool
 
     /// Return a pointer to a memory block for n elements of type T.
     template <typename T>
-    T*
+    inline T*
     allocate(size_t num_elements__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
@@ -355,7 +355,7 @@ class memory_pool
     }
 
     /// Delete a pointer and add its memory back to the pool.
-    void
+    inline void
     free(void* ptr__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
@@ -371,7 +371,7 @@ class memory_pool
 
     /// Return a unique pointer to the allocated memory.
     template <typename T>
-    auto
+    inline auto
     get_unique_ptr(size_t n__)
     {
 #if defined(SIRIUS_USE_MEMORY_POOL)
@@ -380,13 +380,6 @@ class memory_pool
 #else
         return sirius::get_unique_ptr<T>(n__, M_);
 #endif
-    }
-
-    /// Free all the allocated blocks. umpire does not support this
-    /** All pointers and smart pointers, allocated by the pool are invalidated. */
-    void
-    reset()
-    {
     }
 
     /// shrink the memory pool and release all memory.

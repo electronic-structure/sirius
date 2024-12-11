@@ -14,6 +14,8 @@
 #ifndef __SYSTEM_TOOLS_HPP__
 #define __SYSTEM_TOOLS_HPP__
 
+#include <fstream>
+
 namespace sirius {
 
 /// Check if file exists.
@@ -77,7 +79,7 @@ get_proc_status()
                 s >> units;
 
                 if (units != "kB") {
-                    std::printf("runtime::get_proc_status(): wrong units");
+                    std::printf("sirius::get_proc_status(): wrong units");
                 } else {
                     VmHWM = tmp * 1024;
                 }
@@ -90,7 +92,7 @@ get_proc_status()
                 s >> units;
 
                 if (units != "kB") {
-                    std::printf("runtime::get_proc_status(): wrong units");
+                    std::printf("sirius::get_proc_status(): wrong units");
                 } else {
                     VmRSS = tmp * 1024;
                 }
