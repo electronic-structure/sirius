@@ -1,6 +1,6 @@
 FROM ubuntu:22.04 as builder
 
-ARG CUDA_ARCH=60
+ARG CUDA_ARCH=90
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PATH="$PATH:/spack/bin"
