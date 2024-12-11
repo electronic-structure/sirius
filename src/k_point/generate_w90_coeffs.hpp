@@ -30,10 +30,9 @@ wannier_run_(const char*, int32_t*, int32_t*, double*, double*, double*, int32_t
 
 struct k_info
 {
-    r3::vector<double> ibz;
-    int ik_ibz;
-    r3::vector<double> fbz;
-    r3::vector<double> G;
+    r3::vector<double> wannier;
+    int isirius;
+    r3::vector<int> G;
     r3::matrix<int> R;
     r3::matrix<int> invR;
     r3::vector<double> t;
@@ -54,7 +53,7 @@ void
 write_eig(mdarray<double, 2> const& eigval, int const& num_bands, int const& num_kpts);
 
 void
-from_irreduciblewedge_to_fullbrillouinzone(K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k_info>& k_temp);
+unfold_bz(K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k_info>& k_temp);
 
 void
 rotate_wavefunctions(K_point_set& kset_ibz, K_point_set& kset_fbz, std::vector<k_info> const& k_temp,

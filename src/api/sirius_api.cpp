@@ -6456,6 +6456,7 @@ sirius_save_state(void** gs_handler__, const char* file_name__, int* error_code_
                 gs.ctx().create_storage_file(file_name);
                 gs.potential().save(file_name);
                 gs.density().save(file_name);
+                gs.k_point_set().save(file_name);
             },
             error_code__);
 }
