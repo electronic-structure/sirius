@@ -199,7 +199,12 @@ Hubbard_matrix::print_local(int at_lvl__, std::ostream& out__) const
                 }
             }
             solver->solve(mmax, A, &eigenvals[0], eigenvecs);
-            out__ << hbar(width * mmax, '-') << " SPIN: " << is + 1 << std::endl;
+            // don't print "SPIN: 1" for non-magnetic case
+            if (ctx_.num_spins() == 1) {
+                out__ << hbar(width * mmax, '-') << std::endl;
+            } else {
+                out__ << hbar(width * mmax, '-') << " SPIN: " << is + 1 << std::endl;
+            }
             // print eigenvalues
             for (const auto& val : eigenvals) {
                 print_number(val);
