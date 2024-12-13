@@ -57,9 +57,6 @@ RUN wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/d
 # install MPICH
 RUN spack install mpich@${MPICH_VERSION} %gcc
 
-# install openmpi
-RUN spack install openmpi %gcc
-
 # install libvdwxc
 RUN spack install libvdwxc %gcc +mpi ^mpich@${MPICH_VERSION}
 
@@ -100,15 +97,15 @@ RUN spack env create -d /sirius-env-nlcg && \
     spack -e /sirius-env-nlcg develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-nlcg install --only=dependencies --fail-fast
 
-RUN spack env create -d /sirius-env-openmpi && \
-    spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +pugixml +apps +scalapack +fortran build_type=RelWithDebInfo ^netlib-scalapack ^openblas ^openmpi" && \
-    spack -e /sirius-env-openmpi develop -p /sirius-src sirius@develop && \
-    spack -e /sirius-env-openmpi install --only=dependencies --fail-fast
+# RUN spack env create -d /sirius-env-openmpi && \
+#     spack -e /sirius-env-openmpi add "sirius@develop %gcc +tests +pugixml +apps +scalapack +fortran build_type=RelWithDebInfo ^netlib-scalapack ^openblas ^openmpi" && \
+#     spack -e /sirius-env-openmpi develop -p /sirius-src sirius@develop && \
+#     spack -e /sirius-env-openmpi install --only=dependencies --fail-fast
 
-RUN spack env create -d /sirius-env-cuda-sequential && \
-    spack -e /sirius-env-cuda-sequential add "sirius@develop %gcc +cuda +tests +pugixml +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
-    spack -e /sirius-env-cuda-sequential develop -p /sirius-src sirius@develop && \
-    spack -e /sirius-env-cuda-sequential install --only=dependencies --fail-fast
+# RUN spack env create -d /sirius-env-cuda-sequential && \
+#     spack -e /sirius-env-cuda-sequential add "sirius@develop %gcc +cuda +tests +pugixml +apps +fortran build_type=RelWithDebInfo ^openblas ^openmpi" && \
+#     spack -e /sirius-env-cuda-sequential develop -p /sirius-src sirius@develop && \
+#     spack -e /sirius-env-cuda-sequential install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-vdwxc-cuda && \
     spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
