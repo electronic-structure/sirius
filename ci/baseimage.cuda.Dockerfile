@@ -39,7 +39,7 @@ RUN spack config add config:install_tree:root:/opt/local
 RUN spack config add packages:all:variants:cuda_arch=${CUDA_ARCH}
 
 # find all external packages
-RUN spack external find --all
+RUN spack external find --all --exclude=openssl
 
 # find compilers
 RUN spack compiler find
