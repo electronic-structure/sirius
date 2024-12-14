@@ -11,6 +11,7 @@ build base cuda image:
   stage: baseimage
   timeout: 10h
   variables:
+    SLURM_TIMELIMIT: 600
     SLURM_RESERVATION: 'NCCL'
     DOCKERFILE: ci/baseimage.cuda.Dockerfile
     WATCH_FILECHANGES: ci/baseimage.cuda.Dockerfile
