@@ -1759,6 +1759,96 @@ inner(::spla::Context& spla_ctx__, memory_t mem__, spin_range spins__, Wave_func
     }
 }
 
+/// Compute the three component of the spin operator in the basis of the wavefunctions.
+/**
+ * \tparam T Precision type of the wave-functions (float or double).
+ * \tparam F Type of the subspace (float or double for Gamma-point calculation,
+ *           complex<float> or complex<double> otherwise).
+ *
+ * \param [in] spla_ctx   Context of the SPLA library.
+ * \param [in] mem        Location of the input wave-functions (host or device).
+ * \param [in] wf_i       Left hand side of <wf_i | wf_j> product.
+ * \param [in] br_i       Band range of the <wf_i| wave-functions.
+ * \param [in] wf_j       Right hand side of <wf_i | wf_j> product.
+ * \param [in] br_j       Band range of the |wf_j> wave-functions.
+ * \param [out] result    Resulting spin operator matrix.
+ * \param [in] irow0      Starting row of the output sub-block.
+ * \param [in] jcol0      Starting column of the output sub-block.
+ * \return None
+ *
+ * \f[
+ *    S^{x}_{irow0+i,jcol0+j} = \langle \phi_{i0 + i}^{\uparrow} | \phi_{j0 + j}^{\downarrow} \rangle +
+ *                              \langle \phi_{i0 + i}^{\downarrow} | \phi_{j0 + j}^{\uparrow} \rangle 
+ * \f]
+ * \f[
+ *    S^{y}_{irow0+i,jcol0+j} = -i\langle \phi_{i0 + i}^{\uparrow} | \phi_{j0 + j}^{\downarrow} \rangle +
+ *                              +i\langle \phi_{i0 + i}^{\downarrow} | \phi_{j0 + j}^{\uparrow} \rangle 
+ * \f]
+ * \f[
+ *    S^{z}_{irow0+i,jcol0+j} = \langle \phi_{i0 + i}^{\uparrow} | \phi_{j0 + j}^{\uparrow} \rangle -
+ *                              \langle \phi_{i0 + i}^{\downarrow} | \phi_{j0 + j}^{\downarrow} \rangle 
+ * \f]
+ * where i0 and j0 and the dimensions of the resulting inner product matrix are determined by the band ranges for
+ * bra- and ket- states.
+ *
+ * The location of the wave-functions data is determined by the mem parameter. The result is always returned in the
+ * CPU memory. If resulting matrix is allocated on the GPU memory, the result is copied to GPU as well.
+ */
+template <typename F, typename W, typename T>
+inline std::enable_if_t<std::is_same<T, real_type<F>>::value, void>
+spin(::spla::Context& spla_ctx__, memory_t mem__, W const& wf_i__, band_range br_i__,
+      Wave_functions<T> const& wf_j__, band_range br_j__, std::array<la::dmatrix<F>,3>& result__, int irow0__, int jcol0__)
+{
+    PROFILE("wf::spin");
+
+    RTE_ASSERT(wf_i__.ld() == wf_j__.ld());
+    // RTE_ASSERT((wf_i__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+    RTE_ASSERT((wf_j__.gkvec().reduced() == std::is_same<F, real_type<F>>::value));
+
+    if (wf_i__.num_md() != wf::num_mag_dims(3)) {
+        RTE_THROW("input wave-functions are not 2-component spinors");
+    }
+    if (wf_j__.num_md() != wf::num_mag_dims(3)) {
+        RTE_THROW("input wave-functions are not 2-component spinors");
+    }
+
+    auto spla_mat_dist = wf_i__.comm().size() > result__.comm().size()
+                                 ? spla::MatrixDistribution::create_mirror(wf_i__.comm().native())
+                                 : result__.spla_distribution();
+
+    auto ld = wf_i__.ld();
+
+
+    /* define Pauli matrices as some coefficients alphas_ that we multiply by the product of spinors and some spinor indices */
+    auto im = std::complex<double>(0.0, 1.0);
+    auto alphas_    = {{1.0,1.0}, {-im,im}, {1.0, -1.0}};
+    /* means : x-> up-down/down-up;    y -> up-down/down-up     z->up-up/down-down    ( i.e. 0->up, 1->down ) */
+    auto spin_index = {{{0,1},{1,0}}, {{0,1},{1,0}}, {{0,0},{1,1}}};
+
+    /* loop to calculate Sx, Sy, Sz */
+    for( auto& ix : {0, 1, 2} ) {
+        auto& alpha = alphas_[ix];
+        F beta = 0.0;
+        F* result_ptr = result__.size_local() ? result__[ix].at(memory_t::host, 0, 0) : nullptr;
+
+        for (auto s = 0; s != 2; s++) {
+            auto s_i      = wf_i__.actual_spin_index(spin_index[ix][0]);
+            auto s_j      = wf_j__.actual_spin_index(spin_index[ix][1]);
+            auto wf_i_ptr = wf_i__.at(mem__, 0, s_i, wf::band_index(br_i__.begin()));
+            auto wf_j_ptr = wf_j__.at(mem__, 0, s_j, wf::band_index(br_j__.begin()));
+
+            spla::pgemm_ssb(br_i__.size(), br_j__.size(), ld, SPLA_OP_CONJ_TRANSPOSE, alpha[s],
+                            reinterpret_cast<F const*>(wf_i_ptr), ld, reinterpret_cast<F const*>(wf_j_ptr), ld, beta,
+                            result_ptr, result__.ld(), irow0__, jcol0__, spla_mat_dist, spla_ctx__);
+            beta = 1.0;
+        }
+        /* make sure result is updated on device as well */
+        if (result__[ix].on_device()) {
+            result__[ix].copy_to(memory_t::device, irow0__, jcol0__, br_i__.size(), br_j__.size());
+        }
+    }
+}
+
 /// Orthogonalize n new wave-functions to the N old wave-functions
 /** Orthogonalize sets of wave-fuctionsfuctions.
 \tparam T                  Precision of the wave-functions (float or double).

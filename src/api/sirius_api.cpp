@@ -6452,6 +6452,62 @@ sirius_save_state(void** gs_handler__, const char* file_name__, int* error_code_
     call_sirius(
             [&]() {
                 auto& gs = get_gs(gs_handler__);
+
+/*i try to diagonalize the hamiltonian */
+auto& kset = gs.k_point_set();
+auto& ctx_ = gs.ctx();
+auto ctx = &ctx_;
+    Hamiltonian0<double> H0(gs.potential(), true);
+
+    for (auto it : kset.spl_num_kpoints()) {
+        int ik = it.i;
+        auto Hk = H0(*kset.get<double>(ik));
+        for (auto is=0; is< ctx->num_spins(); is++) {
+          std::cout << "ik: " << ik << " ispn : "<< is << " " ; 
+          std::cout << kset.get<double>(ik)->spinor_wave_functions().checksum(memory_t::host, wf::spin_index(is), wf::band_range(0, ctx->num_bands())) << std::endl;
+        }
+        //wf::Wave_functions<double> hpsi(kset.get<double>(ik)->gkvec_sptr(), wf::num_mag_dims(ctx->num_mag_dims() == 3 ? 3 : 0),
+        //                       wf::num_bands(ctx->num_bands()), memory_t::host);
+        //std::shared_ptr<wf::Wave_functions<double>> spsi = std::make_shared<wf::Wave_functions<double>>(kset.get<double>(ik)->gkvec_sptr(), wf::num_mag_dims(ctx->num_mag_dims() == 3 ? 3 : 0),
+        //                       wf::num_bands(ctx->num_bands()), memory_t::host);
+//
+        //auto sr = (kset.ctx().num_mag_dims() == 3) ? wf::spin_range(0, 2) : wf::spin_range(0);
+        //Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, ctx->num_bands()), kset.get<double>(ik)->spinor_wave_functions(), &hpsi, spsi.get());
+//
+        //la::dmatrix<std::complex<double>> psiHpsi(ctx->num_bands(), ctx->num_bands());
+        //psiHpsi.zero();
+        ////wf::inner(kset.ctx().spla_context(), memory_t::host, sr, kset.get<double>(ik)->spinor_wave_functions(), wf::band_range(0, ctx->num_bands()),
+        ////              *spsi, wf::band_range(0, ctx->num_bands()), psiHpsi, 0, 0);
+//
+        //wf::inner(kset.ctx().spla_context(), memory_t::host, sr, kset.get<double>(ik)->spinor_wave_functions(), wf::band_range(0, ctx->num_bands()),
+        //              hpsi, wf::band_range(0, ctx->num_bands()), psiHpsi, 0, 0);
+        //std::cout << "ik = " << ik << std::endl;
+        //std::vector<std::pair<int,int>> indices;
+        //for( int ibnd = 0; ibnd < ctx->num_bands(); ++ibnd ) {
+        //    for( int jbnd = 0; jbnd < ctx->num_bands(); ++jbnd ) {
+        //        //std::cout << ibnd << " " << jbnd << " " ;
+        //        if( ibnd != jbnd )  { 
+        //            ///std::cout <<  psiHpsi(jbnd,ibnd) << std::endl;
+        //            if( std::abs ( psiHpsi(jbnd,ibnd) ) > 1.e-07  ) {
+        //                indices.push_back(std::pair<int,int>(jbnd, ibnd));
+        //            }
+        //        }
+        //        else {
+        //            ///std::cout << psiHpsi(jbnd,ibnd) << " " << kset.get <double>(ik)->band_energies(0)[ibnd] << std::endl;
+        //            if( std::abs( psiHpsi(jbnd,ibnd) - kset.get <double>(ik)->band_energies(0)[ibnd] ) > 1.e-07 ) {
+        //                indices.push_back(std::pair<int,int>(jbnd, ibnd));
+        //            }
+        //        }
+        //    }
+        //}
+//
+        //for( auto& i_ : indices ) {
+        //    std::cout << ik << " " << i_.first << " " << i_.second << " " << psiHpsi(i_.first, i_.second) << std::endl;
+        //}
+    }
+
+
+
                 std::string file_name(file_name__);
                 gs.ctx().create_storage_file(file_name);
                 gs.potential().save(file_name);

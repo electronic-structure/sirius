@@ -157,7 +157,7 @@ K_point<T>::initialize()
         spinor_wave_functions_ = std::make_unique<wf::Wave_functions<T>>(gkvec_, wf::num_mag_dims(ctx_.num_mag_dims()),
                                                                          wf::num_bands(nst), ctx_.host_memory_t());
 
-        if (ctx_.hubbard_correction() || ctx_.cfg().parameters().wannier()) {
+        //if (ctx_.hubbard_correction() || ctx_.cfg().parameters().wannier()) {
             /* allocate Hubbard wave-functions */
             int nwfh = unit_cell_.num_hubbard_wf().first;
             int nwf  = unit_cell_.num_ps_atomic_wf().first;
@@ -170,7 +170,7 @@ K_point<T>::initialize()
                                                                                wf::num_bands(nwf), ctx_.host_memory_t());
             atomic_wave_functions_S_ = std::make_unique<wf::Wave_functions<T>>(
                     gkvec_, wf::num_mag_dims(0), wf::num_bands(nwf), ctx_.host_memory_t());
-        }
+        //}
     }
 
     update();
@@ -625,10 +625,8 @@ K_point<T>::load(HDF5_tree h5in, int id__)
 
             for( int ig = 0; ig < num_gkvec(); ++ig ) {
                 auto ig_loc = igidx( ig );
-                if ( ig_loc != -1 ) {
-                    spinor_wave_functions_->pw_coeffs( ig_loc, sirius::wf::spin_index(ispn), sirius::wf::band_index(ibnd) )
+                spinor_wave_functions_->pw_coeffs( ig_loc, sirius::wf::spin_index(ispn), sirius::wf::band_index(ibnd) )
                                             = wf_tmp[ig] ;
-                }
             }  
         }
     }
