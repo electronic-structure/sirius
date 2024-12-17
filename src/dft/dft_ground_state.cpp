@@ -69,7 +69,7 @@ DFT_ground_state::energy_kin_sum_pw() const
     for (auto it : kset_.spl_num_kpoints()) {
         auto kp = kset_.get<double>(it.i);
 
-        #pragma omp parallel for schedule(static) reduction(+:ekin)
+        #pragma omp parallel for schedule(static) reduction(+ : ekin)
         for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
             auto Gk = kp->gkvec().gkvec_cart(gvec_index_t::local(igloc));
 
@@ -201,6 +201,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
       << "num_dft_iter              : " << num_dft_iter__;
     ctx_.message(1, __func__, s);
 
+    double ne_diff = 0;
+
     for (int iter = 0; iter < num_dft_iter__; iter++) {
         PROFILE("sirius::DFT_ground_state::scf_loop|iteration");
         std::stringstream s;
@@ -225,7 +227,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                                                             ctx_.cfg().iterative_solver().num_steps());
             }
             /* find band occupancies */
-            kset_.find_band_occupancies<float>();
+            ne_diff = kset_.find_band_occupancies<float>();
             /* generate new density from the occupied wave-functions */
             density_.generate<float>(kset_, ctx_.use_symmetry(), true, true);
 #else
@@ -237,7 +239,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             result = sirius::diagonalize<double, double>(H0, kset_, iter_solver_tol__,
                                                          ctx_.cfg().iterative_solver().num_steps());
             /* find band occupancies */
-            kset_.find_band_occupancies<double>();
+            ne_diff = kset_.find_band_occupancies<double>();
             /* generate new density from the occupied wave-functions */
             density_.generate<double>(kset_, ctx_.use_symmetry(), true, true);
         }
@@ -356,6 +358,12 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             converged = converged && (rms < density_tol__);
         }
         if (converged) {
+            if (std::abs(ne_diff) > 0) {
+                std::stringstream ss;
+                ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
+                ss << "\nReduce smearing width!";
+                RTE_THROW(ss.str());
+            }
             std::stringstream out;
             out << std::endl;
             out << "converged after " << iter + 1 << " SCF iterations!" << std::endl;

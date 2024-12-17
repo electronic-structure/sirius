@@ -199,7 +199,7 @@ bisection_search(F&& f, double a, double b, double tol, int maxstep = 1000)
 }
 
 template <typename T>
-void
+double
 K_point_set::find_band_occupancies()
 {
     PROFILE("sirius::K_point_set::find_band_occupancies");
@@ -209,7 +209,7 @@ K_point_set::find_band_occupancies()
     auto band_occ_callback = ctx_.band_occ_callback();
     if (band_occ_callback) {
         band_occ_callback();
-        return;
+        return 0;
     }
 
     /* target number of electrons */
@@ -239,7 +239,7 @@ K_point_set::find_band_occupancies()
         }
 
         this->sync_band<T, sync_band_t::occupancy>();
-        return;
+        return 0;
     }
 
     if (ctx_.smearing_width() == 0) {
@@ -298,6 +298,7 @@ K_point_set::find_band_occupancies()
     }
     this->energy_fermi_ = res_bisection.value();
 
+    double ne_diff = 0;
     /* for cold and Methfessel Paxton smearing start newton minimization  */
     if (ctx_.smearing() == smearing::smearing_t::cold || ctx_.smearing() == smearing::smearing_t::methfessel_paxton) {
         f               = smearing::occupancy(ctx_.smearing(), ctx_.smearing_width());
@@ -313,6 +314,7 @@ K_point_set::find_band_occupancies()
                 RTE_OUT(ctx_.out()) << "newton iteration converged after " << res_newton.value().iter << " steps\n";
                 RTE_OUT(ctx_.out()) << "newton iteration ne_diff " << res_newton.value().ne_diff << " steps\n";
             }
+            ne_diff = res_newton.value().ne_diff;
         } else {
             // Newton has failed, fallback to bisection
             if (ctx_.verbosity() >= 2) {
@@ -373,12 +375,14 @@ K_point_set::find_band_occupancies()
             band_gap_ = eband[ist].first - eband[ist - 1].second;
         }
     }
+    return ne_diff;
 }
 
-template void
+
+template double
 K_point_set::find_band_occupancies<double>();
 #if defined(SIRIUS_USE_FP32)
-template void
+template double
 K_point_set::find_band_occupancies<float>();
 #endif
 

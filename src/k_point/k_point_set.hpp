@@ -109,9 +109,9 @@ class K_point_set
     void
     sync_band();
 
-    /// Find Fermi energy and band occupation numbers.
+    /// Find Fermi energy and band occupation numbers. Returns ne_diff (Newton protocol)
     template <typename T>
-    void
+    double
     find_band_occupancies();
 
     /// Print basic info to the standard output.
