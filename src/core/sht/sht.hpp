@@ -41,10 +41,6 @@ mdarray<T, 2>
 rotation_matrix_l(int l, r3::vector<double> euler_angles, int proper_rotation);
 
 template <typename T>
-void
-rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation, mdarray<T, 2>& rotm);
-
-template <typename T>
 std::vector<mdarray<T, 2>>
 rotation_matrix(int lmax, r3::vector<double> euler_angles, int proper_rotation);
 
@@ -270,24 +266,6 @@ class SHT // TODO: better name
         }
     }
 
-    /// Convert from Ylm to Rlm representation.
-    static void
-    convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
-    {
-        int lm = 0;
-        for (int l = 0; l <= lmax__; l++) {
-            for (int m = -l; m <= l; m++) {
-                if (m == 0) {
-                    f_rlm__[lm] = std::real(f_ylm__[lm]);
-                } else {
-                    int lm1     = sf::lm(l, -m);
-                    f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
-                }
-                lm++;
-            }
-        }
-    }
-
     // void rlm_forward_iterative_transform(double *ftp__, int lmmax, int ncol, double* flm)
     //{
     //     Timer t("sirius::SHT::rlm_forward_iterative_transform");
@@ -386,7 +364,7 @@ class SHT // TODO: better name
         }
     }
 
-    static inline std::complex<double>
+    static inline auto
     rlm_dot_ylm(int l, int m1, int m2)
     {
         return std::conj(ylm_dot_rlm(l, m2, m1));
@@ -398,7 +376,7 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | Y_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double
+    static inline auto
     gaunt_yyy(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
@@ -420,7 +398,7 @@ class SHT // TODO: better name
      *    \langle R_{\ell_1 m_1} | R_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double
+    static inline auto
     gaunt_rrr(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
@@ -430,7 +408,7 @@ class SHT // TODO: better name
         RTE_ASSERT(m2 >= -l2 && m2 <= l2);
         RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
-        double d = 0;
+        double d{0};
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k2 = -l2; k2 <= l2; k2++) {
                 for (int k3 = -l3; k3 <= l3; k3++) {
@@ -449,8 +427,8 @@ class SHT // TODO: better name
      *    \langle R_{\ell_1 m_1} | Y_{\ell_2 m_2} | R_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static double
-    gaunt_rlm_ylm_rlm(int l1, int l2, int l3, int m1, int m2, int m3)
+    static inline auto
+    gaunt_ryr(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -459,10 +437,10 @@ class SHT // TODO: better name
         RTE_ASSERT(m2 >= -l2 && m2 <= l2);
         RTE_ASSERT(m3 >= -l3 && m3 <= l3);
 
-        double d = 0;
+        std::complex<double> d{0};
         for (int k1 = -l1; k1 <= l1; k1++) {
             for (int k3 = -l3; k3 <= l3; k3++) {
-                d += std::real(std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3)) *
+                d += std::conj(SHT::ylm_dot_rlm(l1, k1, m1)) * SHT::ylm_dot_rlm(l3, k3, m3) *
                      SHT::gaunt_yyy(l1, l2, l3, k1, m2, k3);
             }
         }
@@ -475,8 +453,8 @@ class SHT // TODO: better name
      *    \langle Y_{\ell_1 m_1} | R_{\ell_2 m_2} | Y_{\ell_3 m_3} \rangle
      *  \f]
      */
-    static std::complex<double>
-    gaunt_hybrid(int l1, int l2, int l3, int m1, int m2, int m3)
+    static inline auto
+    gaunt_yry(int l1, int l2, int l3, int m1, int m2, int m3)
     {
         RTE_ASSERT(l1 >= 0);
         RTE_ASSERT(l2 >= 0);
@@ -490,6 +468,24 @@ class SHT // TODO: better name
         } else {
             return (ylm_dot_rlm(l2, m2, m2) * gaunt_yyy(l1, l2, l3, m1, m2, m3) +
                     ylm_dot_rlm(l2, -m2, m2) * gaunt_yyy(l1, l2, l3, m1, -m2, m3));
+        }
+    }
+
+    /// Convert from Ylm to Rlm representation.
+    static void
+    convert(int lmax__, std::complex<double> const* f_ylm__, double* f_rlm__)
+    {
+        int lm = 0;
+        for (int l = 0; l <= lmax__; l++) {
+            for (int m = -l; m <= l; m++) {
+                if (m == 0) {
+                    f_rlm__[lm] = std::real(f_ylm__[lm]);
+                } else {
+                    int lm1     = sf::lm(l, -m);
+                    f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
+                }
+                lm++;
+            }
         }
     }
 

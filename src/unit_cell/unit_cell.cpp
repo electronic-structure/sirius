@@ -379,7 +379,8 @@ Unit_cell::serialize(bool cart_pos__) const
             if (cart_pos__) {
                 v = dot(lattice_vectors_, v);
             }
-            dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2]});
+            auto f = atom(ia).vector_field();
+            dict["atoms"][atom_type(iat).label()].push_back({v[0], v[1], v[2], f[0], f[1], f[2]});
         }
     }
     return dict;
@@ -596,7 +597,7 @@ Unit_cell::generate_radial_integrals()
 }
 
 std::string
-Unit_cell::chemical_formula()
+Unit_cell::chemical_formula() const
 {
     std::string name;
     for (int iat = 0; iat < num_atom_types(); iat++) {
@@ -620,7 +621,7 @@ Atom_type&
 Unit_cell::add_atom_type(const std::string label__, const std::string file_name__)
 {
     int id = next_atom_type_id(label__);
-    atom_types_.push_back(std::shared_ptr<Atom_type>(new Atom_type(parameters_, id, label__, file_name__)));
+    atom_types_.push_back(std::make_shared<Atom_type>(parameters_, id, label__, file_name__));
     return *atom_types_.back();
 }
 
@@ -639,7 +640,7 @@ Unit_cell::add_atom(const std::string label, r3::vector<double> position, r3::ve
         RTE_THROW(s);
     }
 
-    atoms_.push_back(std::shared_ptr<Atom>(new Atom(atom_type(label), position, vector_field)));
+    atoms_.push_back(std::make_shared<Atom>(atom_type(label), position, vector_field));
     atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
 }
 
@@ -741,9 +742,9 @@ Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
 
-    symmetry_ = std::unique_ptr<Crystal_symmetry>(new Crystal_symmetry(
-            lattice_vectors_, num_atoms(), num_atom_types(), types, positions, spins, parameters_.so_correction(),
-            parameters_.spglib_tolerance(), parameters_.use_symmetry()));
+    symmetry_ = std::make_unique<Crystal_symmetry>(lattice_vectors_, num_atoms(), num_atom_types(), types, positions,
+                                                   spins, parameters_.so_correction(), parameters_.spglib_tolerance(),
+                                                   parameters_.use_symmetry());
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
@@ -752,8 +753,7 @@ Unit_cell::get_symmetry()
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
-            atom_symmetry_classes_.push_back(
-                    std::shared_ptr<Atom_symmetry_class>(new Atom_symmetry_class(atom_class_id, atom(i).type())));
+            atom_symmetry_classes_.push_back(std::make_shared<Atom_symmetry_class>(atom_class_id, atom(i).type()));
 
             /* scan all atoms */
             for (int j = 0; j < num_atoms(); j++) {

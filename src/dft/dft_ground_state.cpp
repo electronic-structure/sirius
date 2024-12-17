@@ -47,7 +47,7 @@ DFT_ground_state::create_H0()
 {
     PROFILE("sirius::DFT_ground_state::create_H0");
 
-    H0_ = std::shared_ptr<Hamiltonian0<double>>(new Hamiltonian0<double>(potential_, true));
+    H0_ = std::make_shared<Hamiltonian0<double>>(potential_, true);
 }
 
 void
@@ -86,7 +86,7 @@ DFT_ground_state::energy_kin_sum_pw() const
             }
             ekin += 0.5 * d * kp->weight() * Gk.length2();
         } // igloc
-    }     // ikloc
+    } // ikloc
     ctx_.comm().allreduce(&ekin, 1);
     return ekin;
 }
@@ -348,7 +348,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         ctx_.message(2, __func__, out);
         /* check if the calculation has converged */
         bool converged{true};
-        converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
+        // converged = (std::abs(eold - etot) < energy_tol__) && result.converged && iter_solver_converged;
+        converged = (std::abs(eold - etot) < energy_tol__) && iter_solver_converged;
         if (ctx_.cfg().mixer().use_hartree()) {
             converged = converged && (eha_res < density_tol__);
         } else {
@@ -379,7 +380,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
                 density_.mag(j).rg().fft_transform(-1);
             }
         }
-        potential_.save(storage_file_name);
+        // potential_.save(storage_file_name);
         density_.save(storage_file_name);
         // kset_.save(storage_file_name);
     }
@@ -405,8 +406,8 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
         for (int ir = 0; ir < density_.rho().rg().spfft().local_slice_size(); ir++) {
             rho_min = std::min(rho_min, density_.rho().rg().value(ir));
         }
-        dict["rho_min"] = rho_min;
         ctx_.comm().allreduce<double, mpi::op_t::min>(&rho_min, 1);
+        dict["rho_min"] = rho_min;
     }
 
     dict["scf_time"]     = std::chrono::duration_cast<std::chrono::duration<double>>(tstop - tstart).count();
@@ -422,11 +423,6 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
     if (env::check_scf_density()) {
         check_scf_density();
     }
-
-    // dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
-    // dict["volume_units"] = "angstrom^3";
-    // dict["energy"] = dft.total_energy() * ha2ev;
-    // dict["energy_units"] = "eV";
 
     return dict;
 }

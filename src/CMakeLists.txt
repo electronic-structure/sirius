@@ -30,7 +30,6 @@ set(_SOURCES
   "hamiltonian/hamiltonian_k.cpp"
   "hamiltonian/local_operator.cpp"
   "hamiltonian/non_local_operator.cpp"
-  "hamiltonian/s_u_operator.cpp"
   "density/density.cpp"
   "density/augmentation_operator.cpp"
   "density/occupation_matrix.cpp"
@@ -158,6 +157,8 @@ if(SIRIUS_CREATE_FORTRAN_BINDINGS)
   set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
   install(FILES "${PROJECT_BINARY_DIR}/src/mod_files/sirius.mod"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius")
+  install(FILES "${PROJECT_SOURCE_DIR}/src/api/sirius_c_headers.h"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/sirius/src/api")
   install(TARGETS sirius
     EXPORT sirius_targets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"

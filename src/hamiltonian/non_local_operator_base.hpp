@@ -104,7 +104,14 @@ class Non_local_operator
     }
 
     int
-    size(int i) const;
+    size(int i) const
+    {
+        if (i == 0 || i == 1) {
+            return this->size_;
+        }
+        RTE_THROW("invalid dimension");
+        return -1; // make compiler happy
+    }
 
     inline bool
     is_diag() const
@@ -117,8 +124,8 @@ class Non_local_operator
     get_matrix(int ispn, memory_t mem) const;
 };
 
-template <class T>
-template <class F>
+template <typename T>
+template <typename F>
 void
 Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::Wave_functions<T>& op_phi__,
                              wf::band_range br__, beta_projectors_coeffs_t<T> const& beta_coeffs__,
@@ -170,17 +177,6 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
             }
         }
     }
-    // switch (pu) { // TODO: check if this is needed. Null stream later should sync the streams.
-    //     case device_t::GPU: {
-    //         /* wait for previous zgemms */
-    //         #pragma omp parallel
-    //         acc::sync_stream(acc::stream_id(omp_get_thread_num()));
-    //         break;
-    //     }
-    //     case device_t::CPU: {
-    //         break;
-    //     }
-    // }
 
     auto sp = op_phi__.actual_spin_index(wf::spin_index(ispn_block__ & 1));
 
@@ -202,8 +198,8 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, int ispn_block__, wf::
     }
 }
 
-template <class T>
-template <class F>
+template <typename T>
+template <typename F>
 std::enable_if_t<std::is_same<std::complex<T>, F>::value, void>
 Non_local_operator<T>::apply(memory_t mem__, int chunk__, atom_index_t::local ia__, int ispn_block__,
                              wf::Wave_functions<T>& op_phi__, wf::band_range br__,
@@ -258,8 +254,8 @@ Non_local_operator<T>::apply(memory_t mem__, int chunk__, atom_index_t::local ia
     }
 }
 
-template <class T>
-template <class F>
+template <typename T>
+template <typename F>
 void
 Non_local_operator<T>::lmatmul(matrix<F>& out, const matrix<F>& B__, int ispn_block__, memory_t mem_t,
                                identity_t<F> alpha, identity_t<F> beta) const
@@ -297,8 +293,8 @@ Non_local_operator<T>::lmatmul(matrix<F>& out, const matrix<F>& B__, int ispn_bl
     }
 }
 
-template <class T>
-template <class F>
+template <typename T>
+template <typename F>
 void
 Non_local_operator<T>::rmatmul(matrix<F>& out, const matrix<F>& B__, int ispn_block__, memory_t mem_t,
                                identity_t<F> alpha, identity_t<F> beta) const

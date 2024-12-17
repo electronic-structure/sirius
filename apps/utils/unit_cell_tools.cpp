@@ -34,7 +34,7 @@ create_supercell(cmd_args const& args__)
         std::cout << std::endl;
     }
 
-    Simulation_context ctx("sirius.json", mpi::Communicator::self());
+    Simulation_context ctx(std::string("sirius.json"), mpi::Communicator::self());
 
     auto scell_lattice_vectors = dot(ctx.unit_cell().lattice_vectors(), r3::matrix<double>(scell));
 
@@ -113,7 +113,7 @@ create_supercell(cmd_args const& args__)
 void
 find_primitive()
 {
-    Simulation_context ctx("sirius.json", mpi::Communicator::self());
+    Simulation_context ctx(std::string("sirius.json"), mpi::Communicator::self());
 
     double lattice[3][3];
     for (int i : {0, 1, 2}) {
@@ -320,22 +320,15 @@ scale_lattice(cmd_args& args__)
 int
 main(int argn, char** argv)
 {
-    cmd_args args;
-    args.register_key("--input=", "{string} input file name");
-    args.register_key("--supercell=", "{string} transformation matrix (9 numbers)");
-    args.register_key("--qe", "create input for QE");
-    args.register_key("--xml", "create Exciting XML input");
-    args.register_key("--find_primitive", "find a primitive cell");
-    args.register_key("--cif", "create CIF file");
-    args.register_key("--mol", "convert to molecule input file");
-    args.register_key("--scale=", "scale lattice");
-
-    args.parse_args(argn, argv);
-    if (args.exist("help")) {
-        std::printf("Usage: %s [options]\n", argv[0]);
-        args.print_help();
-        return 0;
-    }
+    cmd_args args(argn, argv,
+                  {{"input=", "{string} input file name"},
+                   {"supercell=", "{string} transformation matrix (9 numbers)"},
+                   {"qe", "create input for QE"},
+                   {"xml", "create Exciting XML input"},
+                   {"find_primitive", "find a primitive cell"},
+                   {"cif", "create CIF file"},
+                   {"mol", "convert to molecule input file"},
+                   {"scale=", "scale lattice"}});
 
     sirius::initialize(1);
     if (args.exist("supercell")) {

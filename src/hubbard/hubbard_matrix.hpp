@@ -63,10 +63,13 @@ class Hubbard_matrix
     access(std::string const& what__, std::complex<double>* ptr__, int ld__);
 
     void
-    print_local(int ia__, std::ostream& out__) const;
+    print_local(int idx__, std::ostream& out__) const;
 
     void
     print_nonlocal(int idx__, std::ostream& out__) const;
+
+    void
+    print(std::ostream& out__) const;
 
     void
     zero();
@@ -78,16 +81,18 @@ class Hubbard_matrix
         return local_;
     }
 
+    /// Return local occupation matrix for a given composite atomic level (atom + local n,l).
     auto&
-    local(int ia__)
+    local(int idx__)
     {
-        return local_[ia__];
+        return local_[idx__];
     }
 
+    /// Return const reference to local occupation matrix block.
     auto const&
-    local(int ia__) const
+    local(int idx__) const
     {
-        return local_[ia__];
+        return local_[idx__];
     }
 
     auto&
@@ -235,25 +240,34 @@ class Hubbard_matrix
         return ctx_;
     }
 
-    int
+    auto
     find_orbital_index(const int ia__, const int n__, const int l__) const
     {
-        int at_lvl = 0;
-        for (at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
-            int lo_ind  = atomic_orbitals_[at_lvl].second;
-            int atom_id = atomic_orbitals_[at_lvl].first;
+        for (int at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
+            int lo_ind = atomic_orbitals_[at_lvl].second;
 
             if ((atomic_orbitals_[at_lvl].first == ia__) &&
-                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).n() == n__) &&
-                (ctx_.unit_cell().atom(atom_id).type().lo_descriptor_hub(lo_ind).l() == l__))
-                break;
+                (ctx_.unit_cell().atom(ia__).type().lo_descriptor_hub(lo_ind).n() == n__) &&
+                (ctx_.unit_cell().atom(ia__).type().lo_descriptor_hub(lo_ind).l() == l__)) {
+                return at_lvl;
+            }
         }
 
-        if (at_lvl == static_cast<int>(atomic_orbitals_.size())) {
-            std::cout << "atom: " << ia__ << "n: " << n__ << ", l: " << l__ << std::endl;
-            RTE_THROW("Found an arbital that is not listed\n");
+        std::stringstream s;
+        s << "Atomic orbital is not in the list" << std::endl
+          << "  atom: " << ia__ << ", n: " << n__ << ", l: " << l__ << std::endl
+          << "  list of atomic orbitals for a given atom:" << std::endl;
+        for (int at_lvl = 0; at_lvl < static_cast<int>(atomic_orbitals_.size()); at_lvl++) {
+            int lo_ind = atomic_orbitals_[at_lvl].second;
+            if (atomic_orbitals_[at_lvl].first == ia__) {
+                s << "  at_lvl: " << at_lvl
+                  << ", n: " << ctx_.unit_cell().atom(ia__).type().lo_descriptor_hub(lo_ind).n()
+                  << ", l: " << ctx_.unit_cell().atom(ia__).type().lo_descriptor_hub(lo_ind).l() << std::endl;
+            }
         }
-        return at_lvl;
+        RTE_THROW(s);
+
+        return -1;
     }
 };
 

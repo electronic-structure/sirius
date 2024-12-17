@@ -15,10 +15,12 @@
 #define __UNIT_CELL_HPP__
 
 #include <algorithm>
+#include <memory>
 #include "atom.hpp"
 #include "core/mpi/mpi_grid.hpp"
 #include "core/json.hpp"
 #include "context/simulation_parameters.hpp"
+#include "unit_cell/atom_type.hpp"
 
 namespace sirius {
 
@@ -240,7 +242,7 @@ class Unit_cell
     /// Get a simple simple chemical formula bases on the total unit cell.
     /** Atoms of each type are counted and packed in a string. For example, O2Ni2 or La2O4Cu */
     std::string
-    chemical_formula();
+    chemical_formula() const;
 
     /// Update the parameters that depend on atomic positions or lattice vectors.
     void

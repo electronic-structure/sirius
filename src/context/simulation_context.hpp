@@ -59,24 +59,6 @@ print_memory_usage(OUT&& out__, std::string file_and_line__ = "")
         out__ << ", GPU: " << (gpu_mem >> 20) << " Mb";
     }
     out__ << std::endl;
-
-    std::vector<std::string> labels = {"host"};
-    std::vector<memory_pool*> mp    = {&get_memory_pool(memory_t::host)};
-
-    int np{1};
-    if (acc::num_devices() > 0) {
-        labels.push_back("host pinned");
-        labels.push_back("device");
-        mp.push_back(&get_memory_pool(memory_t::host_pinned));
-        mp.push_back(&get_memory_pool(memory_t::device));
-        np = 3;
-    }
-
-    for (int i = 0; i < np; i++) {
-        out__ << "[mem.pool] " << labels[i] << ": total capacity: " << (mp[i]->total_size() >> 20) << " Mb, "
-              << "free: " << (mp[i]->free_size() >> 20) << " Mb, "
-              << "num.blocks: " << mp[i]->num_blocks() << std::endl;
-    }
 }
 
 /// Store all callback functions in one place.
@@ -285,6 +267,13 @@ class Simulation_context : public Simulation_parameters
     /// Stores all radial integrals.
     radial_integrals_t ri_;
 
+    /// MPI grid for muffin-tin symmetrization.
+    /** MPI grid is defined for each atom symmetry class */
+    std::vector<std::unique_ptr<mpi::Grid>> mpi_grid_mt_sym_;
+
+    /// Rotation matrices for real spherical harmonics.
+    std::vector<std::vector<mdarray<double, 2>>> rotm_;
+
     mutable double evp_work_count_{0};
     mutable int num_loc_op_applied_{0};
     /// Total number of iterative solver steps.
@@ -314,6 +303,7 @@ class Simulation_context : public Simulation_parameters
 
         unit_cell_ = std::make_unique<Unit_cell>(*this, comm_);
 
+        /* read from external config file provided by SIRIUS_CONFIG environment variable */
         this->import(env::config_file());
     }
 
@@ -328,6 +318,8 @@ class Simulation_context : public Simulation_parameters
         init_common();
     }
 
+    /// Create an empty simulation context with an explicit communicators for k-point and
+    /// band parallelisation.
     Simulation_context(mpi::Communicator const& comm__, mpi::Communicator const& comm_k__,
                        mpi::Communicator const& comm_band__)
         : comm_(comm__)
@@ -337,29 +329,41 @@ class Simulation_context : public Simulation_parameters
         init_common();
     }
 
-    /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__)
-        : comm_(mpi::Communicator::world())
-    {
-        init_common();
-        import(str__);
-        unit_cell_->import(cfg().unit_cell());
-    }
-
-    explicit Simulation_context(nlohmann::json const& dict__)
-        : comm_(mpi::Communicator::world())
-    {
-        init_common();
-        import(dict__);
-        unit_cell_->import(cfg().unit_cell());
-    }
-
-    // /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
-    Simulation_context(std::string const& str__, mpi::Communicator const& comm__)
+    /// Create a simulation context with world communicator and load parameters from JSON string or a file.
+    explicit Simulation_context(std::string const& str__, mpi::Communicator const& comm__ = mpi::Communicator::world())
         : comm_(comm__)
     {
         init_common();
-        import(str__);
+        if (!is_json_string(str__) && isHDF5(str__)) {
+            HDF5_tree fin(str__, hdf5_access_t::read_only);
+            std::string json_string;
+            fin.read("config", json_string);
+            auto dict = read_json_from_file_or_string(json_string);
+            for (auto& e : dict["unit_cell"]["atom_types"]) {
+                auto label                             = e.get<std::string>();
+                dict["unit_cell"]["atom_files"][label] = "";
+            }
+            import(dict);
+            unit_cell_->import(cfg().unit_cell());
+
+            /* need to set type of calculation before parsing species */
+            this->electronic_structure_method(cfg().parameters().electronic_structure_method());
+            for (int iat = 0; iat < unit_cell_->num_atom_types(); iat++) {
+                fin["unit_cell"]["atom_types"][iat].read("config", json_string);
+                unit_cell_->atom_type(iat).read_input(json_string);
+            }
+        } else {
+            import(str__);
+            unit_cell_->import(cfg().unit_cell());
+        }
+    }
+
+    explicit Simulation_context(nlohmann::json const& dict__,
+                                mpi::Communicator const& comm__ = mpi::Communicator::world())
+        : comm_(comm__)
+    {
+        init_common();
+        import(dict__);
         unit_cell_->import(cfg().unit_cell());
     }
 
@@ -774,7 +778,7 @@ class Simulation_context : public Simulation_parameters
 
     /// Export parameters of simulation context as a JSON dictionary.
     nlohmann::json
-    serialize()
+    serialize() const
     {
         nlohmann::json dict;
         dict["config"] = cfg().dict();
@@ -845,6 +849,18 @@ class Simulation_context : public Simulation_parameters
             ptr = &pf_ext_ptr.at(label__);
         }
         return ptr;
+    }
+
+    inline auto const&
+    mpi_grid_mt_sym() const
+    {
+        return mpi_grid_mt_sym_;
+    }
+
+    inline auto const&
+    rotm() const
+    {
+        return rotm_;
     }
 };
 
