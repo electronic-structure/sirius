@@ -15,6 +15,9 @@
 #define __XC_FUNCTIONAL_BASE_HPP__
 
 #include <xc.h>
+#if XC_MAJOR_VERSION >= 7
+#include <xc_funcs.h>
+#endif
 #include <string.h>
 #include <memory>
 #include <map>
