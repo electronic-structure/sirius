@@ -3037,7 +3037,7 @@ sirius_get_energy(void* const* gs_handler__, char const* label__, double* energy
 
                 std::map<std::string, std::function<double()>> func = {
                         {"total", [&]() { return sirius::total_energy(ctx, kset, density, potential); }},
-                        {"evalsum", [&]() { return sirius::eval_sum(unit_cell, kset); }},
+                        {"evalsum", [&]() { return sirius::eval_sum(density, kset); }},
                         {"exc", [&]() { return sirius::energy_exc(density, potential); }},
                         {"vxc", [&]() { return sirius::energy_vxc(density, potential); }},
                         {"bxc", [&]() { return sirius::energy_bxc(density, potential); }},
