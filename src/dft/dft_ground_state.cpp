@@ -358,7 +358,7 @@ DFT_ground_state::find(double density_tol__, double energy_tol__, double iter_so
             converged = converged && (rms < density_tol__);
         }
         if (converged) {
-            if (std::abs(ne_diff) > 0) {
+            if (std::abs(ne_diff) > 1e-10) {
                 std::stringstream ss;
                 ss << "Newton minimization didn't respect correct number of electrons, ne_diff=" << ne_diff;
                 ss << "\nReduce smearing width!";
