@@ -135,7 +135,7 @@ Potential::Potential(Simulation_context& ctx__)
     if (!ctx_.full_potential()) {
         d_mtrx_.resize(unit_cell_.num_atoms());
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int nbf = unit_cell_.atom(ia).mt_basis_size();
+            int nbf     = unit_cell_.atom(ia).mt_basis_size();
             d_mtrx_[ia] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1}, mdarray_label("d_mtrx_"));
             d_mtrx_[ia].zero();
         }

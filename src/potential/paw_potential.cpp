@@ -37,8 +37,8 @@ Potential::init_PAW()
     /* initialize dij matrix */
     d_mtrx_paw_.resize(unit_cell_.num_paw_atoms());
     for (int i = 0; i < unit_cell_.num_paw_atoms(); i++) {
-        int ia      = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
-        int nbf     = unit_cell_.atom(ia).mt_basis_size();
+        int ia         = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
+        int nbf        = unit_cell_.atom(ia).mt_basis_size();
         d_mtrx_paw_[i] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1});
     }
 }

@@ -58,10 +58,10 @@ add_k_point_contribution_nonlocal(Potential& potential__, Beta_projectors_base<T
         matrix<F> beta_phi_chunks[2];
 
         for (int ispn = 0; ispn < ctx.num_spins(); ispn++) {
-            int nbnd              = kp__.num_occupied_bands(ispn);
-            beta_phi_chunks[ispn] = inner_prod_beta<F>(ctx.spla_context(), mt, ctx.host_memory_t(),
-                                                       is_device_memory(mt), beta_coeffs, kp__.spinor_wave_functions(),
-                                                       wf::spin_index(ispn), wf::band_range(0, nbnd));
+            int nbnd = kp__.num_occupied_bands(ispn);
+            beta_phi_chunks[ispn] =
+                    inner_prod_beta<F>(ctx.spla_context(), mt, ctx.host_memory_t(), is_device_memory(mt), beta_coeffs,
+                                       kp__.spinor_wave_functions(), wf::spin_index(ispn), wf::band_range(0, nbnd));
         }
 
         for (int x = 0; x < bp_base__.num_comp(); x++) {
@@ -141,8 +141,7 @@ add_k_point_contribution_nonlocal(Potential& potential__, Beta_projectors_base<T
 
                                 case 2: {
                                     /* Dij(00) = dij + dij_Z ;  Dij(11) = dij - dij_Z*/
-                                    dij = (d_mtrx(ibf, jbf, 0) +
-                                           spin_factor * d_mtrx(ibf, jbf, 1));
+                                    dij = (d_mtrx(ibf, jbf, 0) + spin_factor * d_mtrx(ibf, jbf, 1));
                                     if (lm1 == lm2) {
                                         dij += uc.atom(ia).type().d_mtrx_ion()(idxrf1, idxrf2);
                                     }
