@@ -252,8 +252,10 @@ double
 Density::core_leakage() const
 {
     double sum{0};
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        sum += this->core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+    if (ctx_.full_potential()) {
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            sum += this->core_leakage(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+        }
     }
     return sum;
 }
@@ -262,8 +264,10 @@ double
 Density::core_eval_sum() const
 {
     double sum{0};
-    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-        sum += this->core_eval_sum(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+    if (ctx_.full_potential()) {
+        for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+            sum += this->core_eval_sum(ic) * unit_cell_.atom_symmetry_class(ic).num_atoms();
+        }
     }
     return sum;
 }
