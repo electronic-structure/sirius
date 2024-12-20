@@ -2240,6 +2240,9 @@ Density::load(std::string name__)
 void
 Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs__)
 {
+    if (!ctx_.full_potential()) {
+        return;
+    }
     PROFILE("sirius::Density::generate_core_charge_density");
 
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
