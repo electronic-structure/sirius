@@ -23,9 +23,9 @@ mul_veff_with_phase_factors_gpu(int num_atoms__, int num_gvec_loc__, std::comple
 #endif
 
 void
-Potential::generate_D_operator_matrix()
+Potential::generate_d_mtrx()
 {
-    PROFILE("sirius::Potential::generate_D_operator_matrix");
+    PROFILE("sirius::Potential::generate_d_mtrx");
 
     /* local number of G-vectors */
     int gvec_count   = ctx_.gvec().count();

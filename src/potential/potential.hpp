@@ -653,66 +653,25 @@ class Potential : public Field4D
      *  is calculated for all atoms of the same type.
      */
     void
-    generate_D_operator_matrix();
+    generate_d_mtrx();
+
+    void
+    check_potential_continuity_at_mt();
 
     void
     generate_PAW_effective_potential(Density const& density);
 
     double
-    PAW_xc_total_energy(Density const& density__) const
-    {
-        if (!unit_cell_.num_paw_atoms()) {
-            return 0;
-        }
-        /* compute contribution from the core */
-        double ecore{0};
-        #pragma omp parallel for reduction(+:ecore)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
-
-            auto& atom = unit_cell_.atom(ia);
-
-            auto& atom_type = atom.type();
-
-            auto& ps_core = atom_type.ps_core_charge_density();
-            auto& ae_core = atom_type.paw_ae_core_charge_density();
-
-            Spline<double> s(atom_type.radial_grid());
-            auto y00inv = 1.0 / y00;
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                s(ir) = y00inv * ((*paw_ae_exc_)[ia](0, ir) * ae_core[ir] - (*paw_ps_exc_)[ia](0, ir) * ps_core[ir]) *
-                        std::pow(atom_type.radial_grid(ir), 2);
-            }
-            ecore += s.interpolate().integrate(0);
-        }
-        comm_.allreduce(&ecore, 1);
-
-        return inner(*paw_ae_exc_, density__.paw_density().ae_component(0)) -
-               inner(*paw_ps_exc_, density__.paw_density().ps_component(0)) + ecore;
-    }
+    PAW_xc_total_energy(Density const& density__) const;
 
     double
+    PAW_one_elec_energy(Density const& density__) const;
+
+    inline double
     PAW_total_energy(Density const& density__) const
     {
         return paw_hartree_total_energy_ + PAW_xc_total_energy(density__);
     }
-
-    double
-    PAW_one_elec_energy(Density const& density__) const
-    {
-        double e{0};
-        #pragma omp parallel for reduction(+:e)
-        for (auto it : unit_cell_.spl_num_paw_atoms()) {
-            auto ia = unit_cell_.paw_atom_index(it.i);
-            auto dm = density__.density_matrix_aux(atom_index_t::global(ia));
-            e += calc_PAW_one_elec_energy(unit_cell_.atom(ia), dm, d_mtrx_paw_[it.i]);
-        }
-        comm_.allreduce(&e, 1);
-        return e;
-    }
-
-    void
-    check_potential_continuity_at_mt();
 
     auto&
     effective_potential()
