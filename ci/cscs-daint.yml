@@ -12,7 +12,6 @@ build base cuda image:
   timeout: 10h
   variables:
     SLURM_TIMELIMIT: 600
-    SLURM_RESERVATION: 'NCCL'
     DOCKERFILE: ci/baseimage.cuda.Dockerfile
     WATCH_FILECHANGES: ci/baseimage.cuda.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base/sirius-ci
@@ -34,7 +33,6 @@ build cuda image:
   needs: ["build base cuda image"]
   stage: build
   variables:
-    SLURM_RESERVATION: 'NCCL'
     CSCS_REBUILD_POLICY: always
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
@@ -56,7 +54,6 @@ build elpa cuda image:
   needs: ["build base cuda image"]
   stage: build
   variables:
-    SLURM_RESERVATION: 'NCCL'
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-elpa"
@@ -67,7 +64,6 @@ build sequential eigen-solver cuda image:
   needs: ["build base cuda image"]
   stage: build
   variables:
-    SLURM_RESERVATION: 'NCCL'
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-cuda-sequential"
@@ -78,7 +74,6 @@ build fp32 cuda image:
   needs: ["build base cuda image"]
   stage: build
   variables:
-    SLURM_RESERVATION: 'NCCL'
     DOCKERFILE: ci/build.Dockerfile
     PERSIST_IMAGE_NAME: discard
     ENVPATH: "/sirius-env-fp32"
@@ -138,8 +133,6 @@ build nlcg image:
     SLURM_JOB_NUM_NODES: 1
     SLURM_UNBUFFEREDIO: ''
     SLURM_WAIT: 0
-
-
 
 gpu serial:
   extends: .run_tests
