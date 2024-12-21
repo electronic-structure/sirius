@@ -26,6 +26,10 @@
 
 namespace sirius {
 
+/// Generate all-electron core charge densiy.
+/** Solve “free” atom radial equation for core states and find total core charge density. For that, radial grid 
+ *  of the muffin-tin is extended to effective infinity and spherical potential outside muffin-tin is approximated
+ *  with alpha/r + beta tail. Bound states are found and accumulated in the core charge density. */
 static auto
 generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel__, std::vector<double> const& vs__,
                              std::vector<double>& rho_core__)
@@ -209,7 +213,8 @@ Density::Density(Simulation_context& ctx__)
     } else {
         ae_core_charge_density_.resize(unit_cell_.num_atom_symmetry_classes());
         for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-            ae_core_charge_density_[ic] = std::vector<double>(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
+            ae_core_charge_density_[ic] =
+                    std::vector<double>(unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points());
         }
         core_eval_sum_.resize(unit_cell_.num_atom_symmetry_classes());
         core_leakage_.resize(unit_cell_.num_atom_symmetry_classes());
@@ -2252,16 +2257,17 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
     for (auto it : spl_idx) {
-        auto result = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
-                ctx_.core_relativity(), vs__[it.i], ae_core_charge_density_[it.i]);
-        core_leakage_[it.i] = result.first;
+        auto result          = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
+                                                                      ctx_.core_relativity(), vs__[it.i],
+                                                                      ae_core_charge_density_[it.i]);
+        core_leakage_[it.i]  = result.first;
         core_eval_sum_[it.i] = result.second;
     }
 
     for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
         auto rank = spl_idx.location(ic).ib;
         ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
-                unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+                          unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
         ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
         ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
     }
