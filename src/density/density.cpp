@@ -1254,8 +1254,6 @@ Density::generate(K_point_set const& ks__, bool symmetrize__, bool add_core__, b
 
     if (ctx_.full_potential()) {
         if (add_core__) {
-            /* find the core states */
-            //generate_core_charge_density();
             /* add core contribution */
             for (auto it : unit_cell_.spl_num_atoms()) {
                 for (int ir = 0; ir < unit_cell_.atom(it.i).num_mt_points(); ir++) {
