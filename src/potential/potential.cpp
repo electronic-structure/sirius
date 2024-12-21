@@ -330,7 +330,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     }
 
     if (!ctx_.full_potential()) {
-        generate_D_operator_matrix();
+        generate_d_mtrx();
         generate_PAW_effective_potential(density__);
         if (ctx_.verbosity() >= 3) {
             rte::ostream out(ctx_.out(), "potential");
