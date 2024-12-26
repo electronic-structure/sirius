@@ -21,9 +21,8 @@
 
         "num_dft_iter" : 100,
 
-        "ngridk" : [2,2,2],
-        "gamma_point" : false,
-        "num_mag_dims" : 3
+        "ngridk" : [1,1,1],
+        "gamma_point" : false
     },
 
 

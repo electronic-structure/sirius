@@ -78,8 +78,6 @@ main(int argn, char** argv)
     //}
     /* check if the wfs diagonalize the hamiltonian and if the eigenvalues are correct */
 
-    //la::dmatrix<std::complex<double>> psiHpsi(ctx->num_bands(), ctx->num_bands());
-
     std::cout << "num_spins " << kset.ctx().num_spins() << std::endl;
 
     for (auto it : kset.spl_num_kpoints()) {
@@ -103,51 +101,7 @@ main(int argn, char** argv)
             }
         }
 
-        //bool nc_mag     = (kset.ctx().num_mag_dims() == 3);
-        //int num_spinors = (kset.ctx().num_mag_dims() == 1) ? 2 : 1;
-        //int num_sc      = nc_mag ? 2 : 1;
-
-        //auto hpsi = std::make_unique<wf::Wave_functions<double>>(kp->gkvec_sptr(), 
-        //                                                         wf::num_mag_dims(kset.ctx().num_mag_dims()),
-        //                                                         wf::num_bands(ctx->num_bands()), 
-        //                                                         memory_t::host);
-        //auto spsi = std::make_unique<wf::Wave_functions<double>>(kp->gkvec_sptr(), 
-        //                                                         wf::num_mag_dims(kset.ctx().num_mag_dims()),
-        //                                                         wf::num_bands(ctx->num_bands()), 
-        //                                                         memory_t::host);
-
-        //for (int ispin_step = 0; ispin_step < num_spinors; ispin_step++) {
-        //    auto sr = nc_mag ? wf::spin_range(0, 2) : wf::spin_range(ispin_step);
-        //    std::cout << "ik= " << ik << " ispin_step = " << ispin_step; 
-        //    /* get H|psi> */
-        //    Hk.apply_h_s<std::complex<double>>(sr, wf::band_range(0, ctx->num_bands()), kp->spinor_wave_functions(), hpsi.get(), spsi.get());
-
-        //    /* get <psi|H|psi> */
-        //    wf::inner(kset.ctx().spla_context(), memory_t::host, sr, kp->spinor_wave_functions(), wf::band_range(0, ctx->num_bands()),
-        //              *hpsi, wf::band_range(0, ctx->num_bands()), psiHpsi, 0, 0);
-
-        //    /* check elements that are large compared to the threshold */
-        //    std::vector<std::pair<int,int>> indices;
-        //    std::vector<double> comp;
-        //    for( int ibnd = 0; ibnd < ctx->num_bands(); ++ibnd ) {
-        //        for( int jbnd = 0; jbnd < ctx->num_bands(); ++jbnd ) {
-        //            auto comparison = (ibnd == jbnd) ? kset.get<double>(ik)->band_energies(ispin_step)[ibnd]  : 0.;
-
-        //            if( std::abs ( psiHpsi(jbnd,ibnd) - comparison ) > 1.e-07  ) {
-        //                indices.push_back(std::pair<int,int>(jbnd, ibnd));
-        //                comp.push_back(comparison);
-        //            }
-        //        }
-        //    }
-        //    for( auto i = 0; i < indices.size(); ++i ) {
-        //        auto& i_ = indices[i];
-        //        std::cout << "      element = (";
-        //        std::cout << i_.first << ", " << i_.second << ") = " << psiHpsi(i_.first, i_.second) << " comparison : " << comp[i] << std::endl;
-        //    }
-        //}//ispin_step
     }//kpoint
-
-    exit(0);
 
     //kset.generate_w90_coeffs();
 }

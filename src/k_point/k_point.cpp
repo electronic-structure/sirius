@@ -539,12 +539,6 @@ K_point<T>::save(std::string const& name__, int id__) const
         fout["K_point_set"][id__].write("band_energies", band_energies_);
         fout["K_point_set"][id__].write("band_occupancies", band_occupancies_);
 
-        /* save the entire G+k object */
-        // TODO: only the list of z-columns is probably needed to recreate the G+k vectors
-        // serializer s;
-        // gkvec().pack(s);
-        // fout["K_point_set"][id__].write("gkvec", s.stream());
-
         /* save the order of G-vectors */
         mdarray<int, 2> gv({3, num_gkvec()});
         for (int i = 0; i < num_gkvec(); i++) {
