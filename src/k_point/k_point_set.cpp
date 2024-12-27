@@ -587,7 +587,6 @@ K_point_set::save(std::string const& name__) const
         fout["K_point_set"].write("num_kpoints", num_kpoints());
         fout["K_point_set"].write("num_bands", ctx_.num_bands());
         fout["K_point_set"].write("num_spins", ctx_.num_spins());
-
     }
     ctx_.comm().barrier();
     for (int ik = 0; ik < num_kpoints(); ik++) {
@@ -602,7 +601,7 @@ K_point_set::save(std::string const& name__) const
 
 /// \todo check parameters of saved data in a separate function
 void
-K_point_set::load(std::string const& name__) 
+K_point_set::load(std::string const& name__)
 {
     HDF5_tree fin(name__, hdf5_access_t::read_only);
 
@@ -615,28 +614,25 @@ K_point_set::load(std::string const& name__)
     std::vector<int> ikidx(num_kpoints(), -1);
     double vk_in[3];
     std::cout << "num_kpoints: " << num_kpoints() << std::endl;
-    for (int jk = 0; jk < num_kpoints_in; jk++)
-    {
+    for (int jk = 0; jk < num_kpoints_in; jk++) {
         fin["K_point_set"][jk].read("vk", vk_in, 3);
         std::cout << vk_in[0] << " " << vk_in[1] << " " << vk_in[2] << std::endl;
         r3::vector vk_jk(&vk_in[0]);
 
-        for (int ik = 0; ik < num_kpoints(); ik++)
-        {
-            if ( ( vk_jk - kpoints_[ik]->vk() ).length() < 1e-12)
-            {
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            if ((vk_jk - kpoints_[ik]->vk()).length() < 1e-12) {
                 ikidx[ik] = jk;
                 break;
             }
         }
     }
 
-    RTE_ASSERT(std::find_if( ikidx.begin(), ikidx.end(), [&](const int& ik_){ return ik_ != -1; }) != ikidx.end() );
+    RTE_ASSERT(std::find_if(ikidx.begin(), ikidx.end(), [&](const int& ik_) { return ik_ != -1; }) != ikidx.end());
 
-    for (int ik = 0; ik < num_kpoints(); ik++)
-    {
+    for (int ik = 0; ik < num_kpoints(); ik++) {
         int rank = spl_num_kpoints_.location(typename kp_index_t::global(ik)).ib;
-        if (comm().rank() == rank) kpoints_[ik]->load(fin["K_point_set"], ikidx[ik]);
+        if (comm().rank() == rank)
+            kpoints_[ik]->load(fin["K_point_set"], ikidx[ik]);
     }
 }
 

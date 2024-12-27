@@ -548,12 +548,11 @@ K_point<T>::save(std::string const& name__, int id__) const
             }
         }
         fout["K_point_set"][id__].write("gvec", gv);
-        fout["K_point_set"][id__].create_node("bands");
+        fout["K_point_set"][id__].create_node("wave_functions");
         for (int i = 0; i < ctx_.num_bands(); i++) {
-            fout["K_point_set"][id__]["bands"].create_node(i);
-            fout["K_point_set"][id__]["bands"][i].create_node("spinor_wave_function");
+            fout["K_point_set"][id__]["wave_functions"].create_node(i);
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                fout["K_point_set"][id__]["bands"][i]["spinor_wave_function"].create_node(ispn);
+                fout["K_point_set"][id__]["wave_functions"][i].create_node(ispn);
             }
         }
     }
@@ -573,15 +572,14 @@ K_point<T>::save(std::string const& name__, int id__) const
     for (int i = 0; i < ctx_.num_bands(); i++) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* gather full column of PW coefficients on rank 0 */
-            comm().gather(&spinor_wave_functions_->pw_coeffs(0, sirius::wf::spin_index(ispn), sirius::wf::band_index(i)), 
-                          wf_tmp.data(), gkvec_offset,
-                          gkvec_count, 0);
+            comm().gather(
+                    &spinor_wave_functions_->pw_coeffs(0, sirius::wf::spin_index(ispn), sirius::wf::band_index(i)),
+                    wf_tmp.data(), gkvec_offset, gkvec_count, 0);
             if (comm().rank() == 0) {
-                (*fout)["K_point_set"][id__]["bands"][i]["spinor_wave_function"][ispn].write("pw", 
-                reinterpret_cast<T*>(wf_tmp.data()), static_cast<int>(wf_tmp.size() * 2));
+                (*fout)["K_point_set"][id__]["wave_functions"][i][ispn].write("pw", reinterpret_cast<T*>(wf_tmp.data()),
+                                                                              static_cast<int>(wf_tmp.size() * 2));
             }
         }
-        comm().barrier();
     }
 }
 
@@ -594,34 +592,40 @@ K_point<T>::load(HDF5_tree h5in, int id__)
 
     int gkvec_old;
     h5in[id__].read("num_gkvec", &gkvec_old, 1);
-    
-    if( gkvec_old != num_gkvec() ) {
-        RTE_THROW("Number of gkvec differs in current simulation and read wavefunctions");
+
+    if (gkvec_old != num_gkvec()) {
+        std::stringstream s;
+        s << "wrong number of G+k vectors" << std::endl
+          << "  current number of G+k vectors: " << num_gkvec() << std::endl
+          << "  stored number of G+k vectors: " << gkvec_old;
+        RTE_THROW(s);
     }
 
     /* read ordered G vectors on mdarray */
     mdarray<int, 2> gv({3, num_gkvec()});
     h5in[id__].read("gvec", gv);
 
-    /* fill G vectors with read array */
-    mdarray<int, 1> igidx( { num_gkvec() } );
-    for( int ig = 0; ig < num_gkvec(); ++ig ) {   
-        igidx( ig ) = gkvec().index_by_gvec ( r3::vector<int>( gv(0, ig), gv(1, ig), gv(2, ig) ) );  
-    }  
+    /* find a mapping from new local index to stored global index */
+    std::vector<int> igidx(this->gkvec().count());
+    for (int ig = 0; ig < num_gkvec(); ig++) {
+        int ig1 = gkvec().index_by_gvec({gv(0, ig), gv(1, ig), gv(2, ig)}) - gkvec().offset();
+        if (ig1 >= 0 && ig1 < gkvec().count()) {
+            igidx[ig1] = ig;
+        }
+    }
 
     /* read pw coefficients */
     std::vector<std::complex<T>> wf_tmp(num_gkvec());
 
     for (int ibnd = 0; ibnd < ctx_.num_bands(); ibnd++) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            h5in[id__]["bands"][ibnd]["spinor_wave_function"][ispn].read("pw", 
-                reinterpret_cast<T*>(wf_tmp.data()), static_cast<int>(wf_tmp.size() * 2));
+            h5in[id__]["wave_functions"][ibnd][ispn].read("pw", reinterpret_cast<T*>(wf_tmp.data()),
+                                                          static_cast<int>(wf_tmp.size() * 2));
 
-            for( int ig = 0; ig < num_gkvec(); ++ig ) {
-                auto ig_loc = igidx( ig );
-                spinor_wave_functions_->pw_coeffs( ig_loc, sirius::wf::spin_index(ispn), sirius::wf::band_index(ibnd) )
-                                            = wf_tmp[ig] ;
-            }  
+            for (int ig_loc = 0; ig_loc < gkvec().count(); ig_loc++) {
+                spinor_wave_functions_->pw_coeffs(ig_loc, sirius::wf::spin_index(ispn), sirius::wf::band_index(ibnd)) =
+                        wf_tmp[igidx[ig_loc]];
+            }
         }
     }
 }

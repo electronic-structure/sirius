@@ -59,7 +59,7 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
     if (isHDF5(fname__)) {
         config_string = fname__;
     } else {
-        auto json = preprocess_json_input(fname__);
+        auto json     = preprocess_json_input(fname__);
         config_string = json.dump();
     }
 
@@ -74,4 +74,3 @@ create_sim_ctx(std::string fname__, cmd_args const& args__)
 
     return ctx;
 }
-
