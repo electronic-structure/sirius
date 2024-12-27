@@ -49,7 +49,7 @@ check_wave_functions(Hamiltonian_k<T> const& Hk__, wf::Wave_functions<T>& psi__,
             for (int ig = 0; ig < psi__.gkvec().count(); ig++) {
                 /* H|psi> - e S|psi> */
                 auto z = hpsi.pw_coeffs(ig, s1, wf::band_index(ib)) -
-                         spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<real_type<F>>(eval__[ib]);
+                         spsi.pw_coeffs(ig, s1, wf::band_index(ib)) * static_cast<T>(eval__[ib]);
                 l2norm += std::real(z * std::conj(z));
             }
         }
