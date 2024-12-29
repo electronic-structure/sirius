@@ -697,7 +697,7 @@ add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T 
 
 template <typename T>
 void
-Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__)
+Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2> const& wf_fft__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
@@ -834,8 +834,8 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
             /* offdiagonal term */
             if (ctx__.num_mag_dims() == 3) {
                 la::wrap(la::lib_t::blas)
-                        .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 0),
-                              wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one, density_matrix__[ia].at(memory_t::host, 0, 0, 2),
+                        .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 1),
+                              wf1.ld(), &wf2(0, 0, 0), wf2.ld(), &one, density_matrix__[ia].at(memory_t::host, 0, 0, 2),
                               density_matrix__[ia].ld());
             }
         }
@@ -930,8 +930,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
 
             for (int m = 0; m < nbeta; m++) {
                 bp1(m, i, ispn) = beta_psi(m, j);
-                bp2(m, i, ispn) = std::conj(beta_psi(m, j));
-                bp2(m, i, ispn) *= kp__.weight() * kp__.band_occupancy(j, 0);
+                bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__.weight() * kp__.band_occupancy(j);
             }
         }
     }

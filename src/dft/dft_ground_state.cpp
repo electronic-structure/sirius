@@ -25,6 +25,7 @@ DFT_ground_state::initial_state()
     PROFILE("sirius::DFT_ground_state::initial_state");
 
     density_.initial_density();
+    density_.print_info(ctx_.out(1));
     potential_.generate(density_, ctx_.use_symmetry(), true);
     if (!ctx_.full_potential()) {
         if (ctx_.cfg().parameters().precision_wf() == "fp32") {

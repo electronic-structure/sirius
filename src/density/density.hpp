@@ -300,7 +300,7 @@ class Density : public Field4D
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
     void
-    add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
+    add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2> const& wf_fft__);
 
     /// Generate valence density in the muffin-tins
     void
