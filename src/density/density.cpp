@@ -559,12 +559,11 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
-                        ae_dens(lm3coef.lm3, ir) += dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(ir, irb1) *
-                                                      paw_ae_wfs(ir, irb2);
-                        ps_dens(lm3coef.lm3, ir) +=
-                                dm(idx, imagn) * inv_r2 * lm3coef.coef *
-                                (paw_ps_wfs(ir, irb1) * paw_ps_wfs(ir, irb2) +
-                                 atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(ir));
+                        ae_dens(lm3coef.lm3, ir) +=
+                                dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(ir, irb1) * paw_ae_wfs(ir, irb2);
+                        ps_dens(lm3coef.lm3, ir) += dm(idx, imagn) * inv_r2 * lm3coef.coef *
+                                                    (paw_ps_wfs(ir, irb1) * paw_ps_wfs(ir, irb2) +
+                                                     atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(ir));
                     }
                 }
             }

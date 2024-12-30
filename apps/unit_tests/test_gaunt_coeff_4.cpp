@@ -35,8 +35,8 @@ test_gaunt_rrr_numerical()
                         for (int m3 = -l3; m3 <= l3; m3++) {
                             double s{0};
                             for (int i = 0; i < sht.num_points(); i++) {
-                                s += rlm(sf::lm(l1, m1), i) * rlm(sf::lm(l2, m2), i) *
-                                     rlm(sf::lm(l3, m3), i) * sht.weight(i);
+                                s += rlm(sf::lm(l1, m1), i) * rlm(sf::lm(l2, m2), i) * rlm(sf::lm(l3, m3), i) *
+                                     sht.weight(i);
                             }
                             s *= fourpi;
                             d += std::abs(s - SHT::gaunt_rrr(l1, l2, l3, m1, m2, m3));
