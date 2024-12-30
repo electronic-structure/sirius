@@ -145,9 +145,9 @@ Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        init_density_matrix_for_paw();
+        //init_density_matrix_for_paw();
 
-        generate_paw_density();
+        //generate_paw_density();
 
         if (occupation_matrix_) {
             occupation_matrix_->init();
@@ -552,19 +552,19 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
                     auto& lm3coef = GC.gaunt(lm1, lm2, inz);
 
                     /* iterate over radial points */
-                    for (int irad = 0; irad < grid.num_points(); irad++) {
+                    for (int ir = 0; ir < grid.num_points(); ir++) {
 
                         /* we need to divide density over r^2 since wave functions are stored multiplied by r */
-                        double inv_r2 = diag_coef / (grid[irad] * grid[irad]);
+                        double inv_r2 = diag_coef / (grid[ir] * grid[ir]);
 
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
-                        ae_dens(lm3coef.lm3, irad) += dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) *
-                                                      paw_ae_wfs(irad, irb2);
-                        ps_dens(lm3coef.lm3, irad) +=
+                        ae_dens(lm3coef.lm3, ir) += dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(ir, irb1) *
+                                                      paw_ae_wfs(ir, irb2);
+                        ps_dens(lm3coef.lm3, ir) +=
                                 dm(idx, imagn) * inv_r2 * lm3coef.coef *
-                                (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) +
-                                 atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(irad));
+                                (paw_ps_wfs(ir, irb1) * paw_ps_wfs(ir, irb2) +
+                                 atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(ir));
                     }
                 }
             }
@@ -930,7 +930,7 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
 
             for (int m = 0; m < nbeta; m++) {
                 bp1(m, i, ispn) = beta_psi(m, j);
-                bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__.weight() * kp__.band_occupancy(j);
+                bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__.weight() * kp__.band_occupancy(j, 0);
             }
         }
     }
