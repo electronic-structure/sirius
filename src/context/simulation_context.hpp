@@ -813,27 +813,24 @@ class Simulation_context : public Simulation_parameters
         }
     }
 
-    inline rte::ostream
+    /// Wrap output stream of context into rte::ostream.
+    inline auto
     out(int level__, const char* label__) const
     {
-        if (this->verbosity() >= level__) {
-            return rte::ostream(this->out(), label__);
-        } else {
-            return rte::ostream(null_stream(), label__);
-        }
+        return rte::ostream(this->out(level__), label__);
     }
 
-    /// Print message from the stringstream.
-    inline void
-    message(int level__, char const* label__, std::stringstream const& s) const
-    {
-        if (this->verbosity() >= level__) {
-            auto strings = split(s.str(), '\n');
-            for (auto& e : strings) {
-                this->out() << "[" << label__ << "] " << e << std::endl;
-            }
-        }
-    }
+    ///// Print message from the stringstream.
+    //inline void
+    //message(int level__, char const* label__, std::stringstream const& s) const
+    //{
+    //    if (this->verbosity() >= level__) {
+    //        auto strings = split(s.str(), '\n');
+    //        for (auto& e : strings) {
+    //            this->out() << "[" << label__ << "] " << e << std::endl;
+    //        }
+    //    }
+    //}
 
     inline void
     set_periodic_function_ptr(std::string label__, periodic_function_ptr_t<double> ptr__)
