@@ -929,7 +929,8 @@ add_k_point_contribution_dm_pwpp_noncollinear(Simulation_context& ctx__, K_point
 
             for (int m = 0; m < nbeta; m++) {
                 bp1(m, i, ispn) = beta_psi(m, j);
-                bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__.weight() * kp__.band_occupancy(j, 0);
+                bp2(m, i, ispn) = std::conj(beta_psi(m, j));
+                bp2(m, i, ispn) *= kp__.weight() * kp__.band_occupancy(j, 0);
             }
         }
     }
