@@ -80,10 +80,10 @@ RUN spack env create -d /sirius-env-cuda && \
     spack -e /sirius-env-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-cuda install --only=dependencies --fail-fast
 
-RUN spack env create -d /sirius-env-elpa && \
-    spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda +scalapack +elpa ^netlib-scalapack ^mpich ^openblas ^elpa+cuda" && \
-    spack -e /sirius-env-elpa develop -p /sirius-src sirius@develop && \
-    spack -e /sirius-env-elpa install --only=dependencies --fail-fast
+# RUN spack env create -d /sirius-env-elpa && \
+#     spack -e /sirius-env-elpa add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda +scalapack +elpa ^netlib-scalapack ^mpich ^openblas ^elpa+cuda" && \
+#     spack -e /sirius-env-elpa develop -p /sirius-src sirius@develop && \
+#     spack -e /sirius-env-elpa install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-fp32 && \
     spack -e /sirius-env-fp32 add "sirius@develop %gcc build_type=RelWithDebInfo +tests +pugixml +apps +cuda ^mpich ^openblas ^spfft+single_precision+cuda" && \
