@@ -457,52 +457,6 @@ Density::initial_density_full_pot()
 }
 
 void
-Density::init_density_matrix_for_paw()
-{
-    for (int ipaw = 0; ipaw < unit_cell_.num_paw_atoms(); ipaw++) {
-        int ia = unit_cell_.paw_atom_index(paw_atom_index_t::global(ipaw));
-
-        auto& dm = density_matrix(ia);
-        dm.zero();
-
-        auto& atom      = unit_cell_.atom(ia);
-        auto& atom_type = atom.type();
-
-        int nbf = atom_type.mt_basis_size();
-
-        auto& occupations = atom_type.paw_wf_occ();
-
-        /* magnetization vector */
-        auto magn = atom.vector_field();
-
-        for (int xi = 0; xi < nbf; xi++) {
-            auto& basis_func_index_dsc = atom_type.indexb()[xi];
-
-            int rad_func_index = basis_func_index_dsc.idxrf;
-
-            double occ = occupations[rad_func_index];
-
-            int l = basis_func_index_dsc.am.l();
-
-            switch (ctx_.num_mag_dims()) {
-                case 0: {
-                    dm(xi, xi, 0) = occ / double(2 * l + 1);
-                    break;
-                }
-
-                case 3:
-                case 1: {
-                    double nm     = (std::abs(magn[2]) < 1.0) ? magn[2] : std::copysign(1, magn[2]);
-                    dm(xi, xi, 0) = 0.5 * (1.0 + nm) * occ / double(2 * l + 1);
-                    dm(xi, xi, 1) = 0.5 * (1.0 - nm) * occ / double(2 * l + 1);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-void
 Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 {
     auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);

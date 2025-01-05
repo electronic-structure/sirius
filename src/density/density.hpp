@@ -248,10 +248,6 @@ class Density : public Field4D
     void
     generate_paw_density(paw_atom_index_t::local iapaw__);
 
-    /// Initialize PAW density matrix.
-    void
-    init_density_matrix_for_paw();
-
     /// Reduce complex density matrix over magnetic quantum numbers
     /** The following operation is performed:
         \f[
