@@ -147,7 +147,7 @@ Density::initial_density()
 
         //init_density_matrix_for_paw();
 
-        //generate_paw_density();
+        generate_paw_density();
 
         if (occupation_matrix_) {
             occupation_matrix_->init();
