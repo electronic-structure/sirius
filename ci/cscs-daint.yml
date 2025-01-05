@@ -29,7 +29,7 @@ build base rocm image:
     DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
 
 build cuda image:
-  extends: [.dynamic-image-name, .container-builder-cscs-gh200]
+  extends: [.container-builder-cscs-gh200]
   needs: ["build base cuda image"]
   stage: build
   variables:
