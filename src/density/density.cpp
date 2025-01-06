@@ -145,7 +145,7 @@ Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        init_density_matrix_for_paw();
+        //init_density_matrix_for_paw();
 
         generate_paw_density();
 
@@ -457,52 +457,6 @@ Density::initial_density_full_pot()
 }
 
 void
-Density::init_density_matrix_for_paw()
-{
-    for (int ipaw = 0; ipaw < unit_cell_.num_paw_atoms(); ipaw++) {
-        int ia = unit_cell_.paw_atom_index(paw_atom_index_t::global(ipaw));
-
-        auto& dm = density_matrix(ia);
-        dm.zero();
-
-        auto& atom      = unit_cell_.atom(ia);
-        auto& atom_type = atom.type();
-
-        int nbf = atom_type.mt_basis_size();
-
-        auto& occupations = atom_type.paw_wf_occ();
-
-        /* magnetization vector */
-        auto magn = atom.vector_field();
-
-        for (int xi = 0; xi < nbf; xi++) {
-            auto& basis_func_index_dsc = atom_type.indexb()[xi];
-
-            int rad_func_index = basis_func_index_dsc.idxrf;
-
-            double occ = occupations[rad_func_index];
-
-            int l = basis_func_index_dsc.am.l();
-
-            switch (ctx_.num_mag_dims()) {
-                case 0: {
-                    dm(xi, xi, 0) = occ / double(2 * l + 1);
-                    break;
-                }
-
-                case 3:
-                case 1: {
-                    double nm     = (std::abs(magn[2]) < 1.0) ? magn[2] : std::copysign(1, magn[2]);
-                    dm(xi, xi, 0) = 0.5 * (1.0 + nm) * occ / double(2 * l + 1);
-                    dm(xi, xi, 1) = 0.5 * (1.0 - nm) * occ / double(2 * l + 1);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-void
 Density::generate_paw_density(paw_atom_index_t::local ialoc__)
 {
     auto ia_paw = ctx_.unit_cell().spl_num_paw_atoms(ialoc__);
@@ -552,19 +506,18 @@ Density::generate_paw_density(paw_atom_index_t::local ialoc__)
                     auto& lm3coef = GC.gaunt(lm1, lm2, inz);
 
                     /* iterate over radial points */
-                    for (int irad = 0; irad < grid.num_points(); irad++) {
+                    for (int ir = 0; ir < grid.num_points(); ir++) {
 
                         /* we need to divide density over r^2 since wave functions are stored multiplied by r */
-                        double inv_r2 = diag_coef / (grid[irad] * grid[irad]);
+                        double inv_r2 = diag_coef / (grid[ir] * grid[ir]);
 
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
-                        ae_dens(lm3coef.lm3, irad) += dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) *
-                                                      paw_ae_wfs(irad, irb2);
-                        ps_dens(lm3coef.lm3, irad) +=
-                                dm(idx, imagn) * inv_r2 * lm3coef.coef *
-                                (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) +
-                                 atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(irad));
+                        ae_dens(lm3coef.lm3, ir) +=
+                                dm(idx, imagn) * inv_r2 * lm3coef.coef * paw_ae_wfs(ir, irb1) * paw_ae_wfs(ir, irb2);
+                        ps_dens(lm3coef.lm3, ir) += dm(idx, imagn) * inv_r2 * lm3coef.coef *
+                                                    (paw_ps_wfs(ir, irb1) * paw_ps_wfs(ir, irb2) +
+                                                     atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(ir));
                     }
                 }
             }
@@ -697,7 +650,7 @@ add_k_point_contribution_rg_noncollinear(fft::spfft_transform_type<T>& fft__, T 
 
 template <typename T>
 void
-Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__)
+Density::add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2> const& wf_fft__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
@@ -834,8 +787,8 @@ add_k_point_contribution_dm_fplapw(Simulation_context const& ctx__, K_point<T> c
             /* offdiagonal term */
             if (ctx__.num_mag_dims() == 3) {
                 la::wrap(la::lib_t::blas)
-                        .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 0),
-                              wf1.ld(), &wf2(0, 0, 1), wf2.ld(), &one, density_matrix__[ia].at(memory_t::host, 0, 0, 2),
+                        .gemm('N', 'T', mt_basis_size, mt_basis_size, kp__.num_occupied_bands(), &one, &wf1(0, 0, 1),
+                              wf1.ld(), &wf2(0, 0, 0), wf2.ld(), &one, density_matrix__[ia].at(memory_t::host, 0, 0, 2),
                               density_matrix__[ia].ld());
             }
         }

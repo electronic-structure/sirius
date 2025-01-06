@@ -40,6 +40,7 @@ Potential::init_PAW()
         int ia      = unit_cell_.paw_atom_index(paw_atom_index_t::global(i));
         paw_dij_[i] = mdarray<double, 3>(
                 {unit_cell_.atom(ia).mt_basis_size(), unit_cell_.atom(ia).mt_basis_size(), ctx_.num_mag_dims() + 1});
+        paw_dij_[i].zero();
     }
 }
 
