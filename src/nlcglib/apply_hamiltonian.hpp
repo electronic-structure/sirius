@@ -41,7 +41,9 @@ apply_hamiltonian(Hamiltonian0<double>& H0, K_point<double>& kp, wf::Wave_functi
     int n = num_wf;
     for (int ispn_step = 0; ispn_step < ctx.num_spinors(); ispn_step++) {
         // sping_range: 2 for non-collinear magnetism, otherwise ispn_step
-        auto spin_range = wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
+        auto spin_range = (ctx.num_mag_dims() == 3) ? wf::spin_range(0, 2) : wf::spin_range(ispn_step);
+
+        //auto spin_range = (ctx.num_mag_dims() == 3) ? wf::spin_range(0,1) : wf::spin_range(ispn_step);//wf::spin_range((ctx.num_mag_dims() == 3) ? 2 : ispn_step);
         if constexpr (gamma_point) {
             H.apply_h_s<double>(spin_range, wf::band_range(N, n), wf, &wf_out, swf.get());
         } else {
