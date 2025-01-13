@@ -262,13 +262,13 @@ class splindex_iterator_t
         return *this;
     }
 
-    inline splindex_iterator_t<Index_t>
-    operator++(int)
-    {
-        splindex_iterator_t<Index_t> tmp(this->idx());
-        this->li++;
-        return tmp;
-    }
+    //inline splindex_iterator_t<Index_t>
+    //operator++(int)
+    //{
+    //    splindex_iterator_t<Index_t> tmp(this->idx());
+    //    this->li++;
+    //    return tmp;
+    //}
 
     inline auto
     operator*()
