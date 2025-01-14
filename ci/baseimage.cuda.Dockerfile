@@ -91,7 +91,7 @@ RUN spack env create -d /sirius-env-fp32 && \
     spack -e /sirius-env-fp32 install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-nlcg && \
-    spack -e /sirius-env-nlcg add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +cuda +nlcglib ^openblas ^mpich" && \
+    spack -e /sirius-env-nlcg add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +cuda +nlcglib ^openblas ^mpich ^nlcglib@1.0b" && \
     spack -e /sirius-env-nlcg develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-nlcg install --only=dependencies --fail-fast
 
@@ -106,6 +106,6 @@ RUN spack env create -d /sirius-env-nlcg && \
 #     spack -e /sirius-env-cuda-sequential install --only=dependencies --fail-fast
 
 RUN spack env create -d /sirius-env-vdwxc-cuda && \
-    spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda" && \
+    spack -e /sirius-env-vdwxc-cuda add "sirius@develop %gcc build_type=RelWithDebInfo +fortran +tests +pugixml +apps +vdwxc +cuda +nlcglib ^openblas ^mpich +cuda ^nlcglib@1.0b" && \
     spack -e /sirius-env-vdwxc-cuda develop -p /sirius-src sirius@develop && \
     spack -e /sirius-env-vdwxc-cuda install --only=dependencies --fail-fast
