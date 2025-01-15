@@ -111,7 +111,7 @@ build nlcg image:
 #     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 .run_tests:
-  extends: .container-runner-daint-gpu
+  extends: .container-runner-daint-gh200
   needs: ["build cuda image"]
   stage: test
   script:
