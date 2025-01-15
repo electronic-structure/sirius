@@ -359,6 +359,17 @@ class hubbard_orbital_descriptor
     {
         return idx_wf_;
     }
+
+    template <typename OUT>
+    inline void
+    print_info(OUT&& out__) const
+    {
+        out__ << U_ << " " << J_ << " " << alpha_ << " " << beta_ << " " << J0_ << std::endl;
+        for (int i = 0; i < 4; i++) {
+            out__ << hubbard_coefficients_[i] << " ";
+        }
+        out__ << std::endl;
+    }
 };
 
 inline std::ostream&
