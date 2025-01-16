@@ -856,33 +856,6 @@ Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
         }
     }
 
-    //#pragma omp parallel default(shared)
-    //{
-    //    std::vector<double> rho_t(rho.num_points());
-    //    std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
-
-    //    #pragma omp for
-    //    for (int ist = 0; ist < atom_type_.num_atomic_levels(); ist++) {
-    //        if (atom_type_.atomic_level(ist).core) {
-    //            Bound_state bs(core_rel__, atom_type_.zn(), atom_type_.atomic_level(ist).n,
-    //            atom_type_.atomic_level(ist).l,
-    //                           atom_type_.atomic_level(ist).k, rgrid, veff, level_energy[ist]);
-
-    //            auto& rho = bs.rho();
-    //            for (int i = 0; i < rgrid.num_points(); i++) {
-    //                rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
-    //            }
-
-    //            level_energy[ist] = bs.enu();
-    //        }
-    //    }
-
-    //    #pragma omp critical
-    //    for (int i = 0; i < rho.num_points(); i++) {
-    //        rho(i) += rho_t[i];
-    //    }
-    //}
-
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
         ae_core_charge_density_[ir] = rho(ir);
     }
