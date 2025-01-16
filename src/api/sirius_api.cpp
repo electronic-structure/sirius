@@ -6421,7 +6421,7 @@ sirius_generate_d_operator_matrix(void* const* gs_handler__, int* error_code__)
     call_sirius(
             [&]() {
                 auto& gs = get_gs(gs_handler__);
-                gs.potential().generate_D_operator_matrix();
+                gs.potential().generate_d_mtrx();
             },
             error_code__);
 }

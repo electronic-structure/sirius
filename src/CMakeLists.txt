@@ -41,7 +41,7 @@ set(_SOURCES
   "hubbard/hubbard_occupancies_derivatives.cpp"
   "hubbard/hubbard_potential_energy.cpp"
   "hubbard/hubbard_matrix.cpp"
-  "potential/generate_d_operator_matrix.cpp"
+  "potential/generate_d_mtrx.cpp"
   "potential/generate_pw_coeffs.cpp"
   "potential/paw_potential.cpp"
   "potential/poisson.cpp"
@@ -115,6 +115,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
   SpFFT::spfft
   SPLA::spla
+  GSL::gsl
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>

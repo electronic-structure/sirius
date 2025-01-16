@@ -338,6 +338,10 @@ get_uuid(int device_id__)
         }
         s << std::hex << std::setw(2) << std::setfill('0') << (int)devprop.uuid.bytes[i];
     }
+#elif defined(SIRIUS_ROCM)
+    for (int i = 0; i < 16; ++i) {
+        s << std::hex << devprop.uuid.bytes[i];
+    }
 #endif
     return s.str();
 }
