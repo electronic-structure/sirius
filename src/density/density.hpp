@@ -248,10 +248,6 @@ class Density : public Field4D
     void
     generate_paw_density(paw_atom_index_t::local iapaw__);
 
-    /// Initialize PAW density matrix.
-    void
-    init_density_matrix_for_paw();
-
     /// Reduce complex density matrix over magnetic quantum numbers
     /** The following operation is performed:
         \f[
@@ -300,7 +296,7 @@ class Density : public Field4D
     /// Add k-point contribution to the density and magnetization defined on the regular FFT grid.
     template <typename T>
     void
-    add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2>& wf_fft__);
+    add_k_point_contribution_rg(K_point<T>* kp__, std::array<wf::Wave_functions_fft<T>, 2> const& wf_fft__);
 
     /// Generate valence density in the muffin-tins
     void

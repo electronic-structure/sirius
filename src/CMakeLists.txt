@@ -115,6 +115,7 @@ target_link_libraries(sirius_cxx PUBLIC ${GSL_LIBRARY}
   $<TARGET_NAME_IF_EXISTS:kokkos::kokkos>
   SpFFT::spfft
   SPLA::spla
+  GSL::gsl
   "${SIRIUS_LINALG_LIB}"
   $<$<BOOL:${SIRIUS_USE_PUGIXML}>:pugixml::pugixml>
   $<$<BOOL:${SIRIUS_USE_MEMORY_POOL}>:umpire>
