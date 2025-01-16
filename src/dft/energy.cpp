@@ -110,16 +110,6 @@ energy_vloc(Density const& density, Potential const& potential)
     return sirius::inner(potential.local_potential(), density.rho().rg());
 }
 
-//double
-//core_eval_sum(Unit_cell const& unit_cell)
-//{
-//    double sum{0};
-//    for (int ic = 0; ic < unit_cell.num_atom_symmetry_classes(); ic++) {
-//        sum += unit_cell.atom_symmetry_class(ic).core_eval_sum() * unit_cell.atom_symmetry_class(ic).num_atoms();
-//    }
-//    return sum;
-//}
-
 double
 eval_sum(Density const& density, K_point_set const& kset)
 {
