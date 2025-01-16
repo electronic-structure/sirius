@@ -90,15 +90,15 @@ build vdwxc cuda image:
     ENVPATH: "/sirius-env-vdwxc-cuda"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
-build nlcg image:
-  extends: .container-builder-cscs-gh200
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-nlcg"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+# build nlcg image:
+#   extends: .container-builder-cscs-gh200
+#   needs: ["build base cuda image"]
+#   stage: build
+#   variables:
+#     DOCKERFILE: ci/build.Dockerfile
+#     PERSIST_IMAGE_NAME: discard
+#     ENVPATH: "/sirius-env-nlcg"
+#     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 # build openmpi image:
 #   extends: .container-builder
