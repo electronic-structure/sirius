@@ -132,6 +132,15 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
+    if (!ctx_.full_potential()) {
+        d_mtrx_.resize(unit_cell_.num_atoms());
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            int nbf     = unit_cell_.atom(ia).mt_basis_size();
+            d_mtrx_[ia] = mdarray<double, 3>({nbf, nbf, ctx_.num_mag_dims() + 1}, mdarray_label("d_mtrx_"));
+            d_mtrx_[ia].zero();
+        }
+    }
+
     /* in case of PAW */
     init_PAW();
 
@@ -321,7 +330,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
     }
 
     if (!ctx_.full_potential()) {
-        generate_D_operator_matrix();
+        generate_d_mtrx();
         generate_PAW_effective_potential(density__);
         if (ctx_.verbosity() >= 3) {
             rte::ostream out(ctx_.out(), "potential");
@@ -350,7 +359,7 @@ Potential::generate(Density const& density__, bool use_symmetry__, bool transfor
                     for (int ib2 = 0; ib2 < atom.mt_basis_size(); ib2++) {
                         out << "    ";
                         for (int ib1 = 0; ib1 < atom.mt_basis_size(); ib1++) {
-                            out << ffmt(8, 3) << atom.d_mtrx(ib1, ib2, imagn);
+                            out << ffmt(8, 3) << d_mtrx_[ia](ib1, ib2, imagn);
                         }
                         out << std::endl;
                     }

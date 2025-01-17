@@ -29,16 +29,17 @@ template <typename T>
 class Beta_projectors;
 template <typename T>
 class Beta_projectors_base;
+class Potential;
 
 template <typename T>
 class D_operator : public Non_local_operator<T>
 {
   private:
     void
-    initialize();
+    initialize(Potential& potential__);
 
   public:
-    D_operator(Simulation_context const& ctx_);
+    D_operator(Potential& potential__);
 };
 
 template <typename T>

@@ -70,7 +70,7 @@ inline auto
 get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
 {
     if (rho__ < 0.0) {
-        return std::make_pair<double, double>(0.0, 0.0);
+        return std::make_pair(0.0, 0.0);
     }
 
     double mag{0};
@@ -85,7 +85,7 @@ get_rho_up_dn(int num_mag_dims__, double rho__, r3::vector<double> mag__)
         mag = std::min(mag__.length(), rho__);
     }
 
-    return std::make_pair<double, double>(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
+    return std::make_pair(0.5 * (rho__ + mag), 0.5 * (rho__ - mag));
 }
 
 /// PAW density storage.
