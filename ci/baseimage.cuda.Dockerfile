@@ -37,6 +37,8 @@ RUN spack repo add --scope system /opt/spack
 RUN spack config add config:install_tree:root:/opt/local
 # set cuda_arch for all packages
 RUN spack config add packages:all:variants:cuda_arch=${CUDA_ARCH}
+# make sure the stage dir is in a persistent location (not /tmp) we need the build directory to run the tests
+RUN spack config --scope=user add config:build_stage:/spack-build-stage
 
 # find all external packages
 RUN spack external find --all --exclude=openssl

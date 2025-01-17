@@ -12,8 +12,6 @@ RUN spack -e $ENVPATH install
 # # show the spack's spec
 RUN spack -e $ENVPATH find -lcdv sirius
 
-RUN spack config --scope=user add config:build_stage:/spack-build-stage
-
 # we need a fixed name for the build directory
 # here is a hacky workaround to link ./spack-build-{hash} to ./spack-build
 RUN cd /sirius-src && ln -s $(spack -e $ENVPATH location -b sirius) spack-build
