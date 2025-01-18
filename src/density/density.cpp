@@ -81,16 +81,14 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
         veff[ir] = alpha * rgrid.x_inv(ir) + beta;
     }
 
-    //== /* write spherical potential */
-    //== std::stringstream sstr;
-    //== sstr << "spheric_potential_" << id_ << ".dat";
-    //== FILE* fout = fopen(sstr.str().c_str(), "w");
-
-    //== for (int ir = 0; ir < rgrid.num_points(); ir++)
-    //== {
-    //==     fprintf(fout, "%18.10f %18.10f\n", rgrid[ir], veff[ir]);
-    //== }
-    //== fclose(fout);
+    /* write spherical potential */
+    if (false) {
+        nlohmann::json dict;
+        dict["x"] = free_atom_grid;
+        dict["veff"] = veff;
+        dict["z"] = zn;
+        write_json_to_file(dict, "spheric_potential_" + std::to_string(atom_type__.id()) + ".json");
+    }
 
     /* atomic level energies */
     std::vector<double> level_energy(atom_type__.num_atomic_levels());
