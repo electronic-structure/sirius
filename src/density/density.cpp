@@ -32,7 +32,7 @@ namespace sirius {
  *  with alpha/r + beta tail. Bound states are found and accumulated in the core charge density. */
 static auto
 generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel__, std::vector<double> const& vs__,
-                             std::vector<double>& rho_core__)
+                             std::vector<double> const& rho_s__, std::vector<double>& rho_core__)
 {
     std::fill(rho_core__.begin(), rho_core__.end(), 0.0);
 
@@ -42,50 +42,70 @@ generate_core_charge_density(Atom_type const& atom_type__, relativity_t core_rel
     }
 
     int nmtp = atom_type__.num_mt_points();
+    int zn   = atom_type__.zn();
 
-    std::vector<double> free_atom_grid(nmtp);
+    auto get_free_atom_grid = [&]()
+    {
+    	std::vector<double> free_atom_grid(nmtp);
+    	for (int i = 0; i < nmtp; i++) {
+    	    free_atom_grid[i] = atom_type__.radial_grid(i);
+    	}
+
+    	/* extend radial grid */
+    	double x  = atom_type__.radial_grid(nmtp - 1);
+    	double dx = atom_type__.radial_grid().dx(nmtp - 2);
+    	while (x < 15.0 + zn / 20.0) {
+    	    x += dx;
+    	    free_atom_grid.push_back(x);
+    	    dx *= 1.025;
+    	}
+    	return Radial_grid_ext<double>(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
+    };
+
+    auto rgrid = get_free_atom_grid();
+
+
+    Spline<double> rho_s(rgrid);
     for (int i = 0; i < nmtp; i++) {
-        free_atom_grid[i] = atom_type__.radial_grid(i);
+        rho_s(i) = rho_s__[i];
     }
+    rho_s.interpolate();
+    std::vector<double> g1, g2, vh(rgrid.num_points());
+    /* compute Hartree potential */
+    rho_s.integrate(g2, 2);
+    double t1 = rho_s.integrate(g1, 1);
 
-    int zn = atom_type__.zn();
-
-    /* extend radial grid */
-    double x  = atom_type__.radial_grid(nmtp - 1);
-    double dx = atom_type__.radial_grid().dx(nmtp - 2);
-    while (x < 10.0 + zn / 10.0) {
-        x += dx;
-        free_atom_grid.push_back(x);
-        dx *= 1.025;
+    for (int i = 0; i < rgrid.num_points(); i++) {
+        vh[i] = fourpi * (g2[i] / rgrid.x(i) + t1 - g1[i]) - zn * rgrid.x_inv(i);
     }
-    Radial_grid_ext<double> rgrid(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
-
-    /* interpolate spherical potential inside muffin-tin */
-    Spline<double> svmt(atom_type__.radial_grid());
-    /* remove nucleus contribution from Vmt */
-    for (int ir = 0; ir < nmtp; ir++) {
-        svmt(ir) = vs__[ir] + zn * atom_type__.radial_grid().x_inv(ir);
-    }
-    svmt.interpolate();
-    /* fit tail to alpha/r + beta */
-    double alpha = -(std::pow(atom_type__.mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + zn);
-    double beta  = svmt(nmtp - 1) - (zn + alpha) / atom_type__.mt_radius();
-
-    /* cook an effective potential from muffin-tin part and a tail */
+    
+    /* cook effective potential from muffin-tin part and tail */
     std::vector<double> veff(rgrid.num_points());
     for (int ir = 0; ir < nmtp; ir++) {
         veff[ir] = vs__[ir];
     }
-    /* simple tail alpha/r + beta */
+    double beta = vs__[nmtp - 1] - vh[nmtp - 1];
+    /* add tail */
     for (int ir = nmtp; ir < rgrid.num_points(); ir++) {
-        veff[ir] = alpha * rgrid.x_inv(ir) + beta;
+        veff[ir] = vh[ir] + beta;
+    }
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
+        veff[ir] += 100.0 / (1 + std::exp(-8 * (rgrid.x(ir) - rgrid.last())));
+    }
+
+    std::vector<double> vel(nmtp);
+    /* remove nucleus contribution from Vmt */
+    for (int ir = 0; ir < nmtp; ir++) {
+        vel[ir] = vs__[ir] + zn * atom_type__.radial_grid().x_inv(ir);
     }
 
     /* write spherical potential */
-    if (false) {
+    if (true) {
         nlohmann::json dict;
-        dict["x"] = free_atom_grid;
+        dict["x"] = rgrid.values();
         dict["veff"] = veff;
+	dict["vel"] = vel;
+        dict["vh"] = vh;
         dict["z"] = zn;
         write_json_to_file(dict, "spheric_potential_" + std::to_string(atom_type__.id()) + ".json");
     }
@@ -2205,20 +2225,34 @@ Density::generate_core_charge_density(std::vector<std::vector<double>> const& vs
 
     auto& spl_idx = unit_cell_.spl_num_atom_symmetry_classes();
 
-    for (auto it : spl_idx) {
-        auto result          = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
-                                                                      ctx_.core_relativity(), vs__[it.i],
-                                                                      ae_core_charge_density_[it.i]);
-        core_leakage_[it.i]  = result.first;
-        core_eval_sum_[it.i] = result.second;
-    }
+    /* get shperical part of density; it's the same for all atoms of a given class */
+    auto get_rho_s = [&](int ic) {
+        std::vector<double> result;
+        for (int i = 0; i < unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(); i++) {
+            result.push_back(y00 * this->rho().mt()[unit_cell_.atom_symmetry_class(ic).atom_id(0)](0, i));
+        }
+        return result;
+    };
 
-    for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
-        auto rank = spl_idx.location(ic).ib;
-        ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
-                          unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
-        ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
-        ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
+    try {
+        for (auto it : spl_idx) {
+            auto rho_s           = get_rho_s(it.i);
+            auto result          = ::sirius::generate_core_charge_density(unit_cell_.atom_symmetry_class(it.i).atom_type(),
+                                                                          ctx_.core_relativity(), vs__[it.i], rho_s,
+                                                                          ae_core_charge_density_[it.i]);
+            core_leakage_[it.i]  = result.first;
+            core_eval_sum_[it.i] = result.second;
+        }
+
+        for (auto ic = begin_global(spl_idx); ic != end_global(spl_idx); ic++) {
+            auto rank = spl_idx.location(ic).ib;
+            ctx_.comm().bcast(ae_core_charge_density_[ic].data(),
+                              unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points(), rank);
+            ctx_.comm().bcast(&core_leakage_[ic], 1, rank);
+            ctx_.comm().bcast(&core_eval_sum_[ic], 1, rank);
+        }
+    } catch (std::exception const& e) {
+        RTE_OUT(ctx_.out()) << "Warning: generation of core charge density failed" << std::endl << e.what() << std::endl;
     }
 }
 
