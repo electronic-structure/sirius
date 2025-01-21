@@ -1176,7 +1176,7 @@ Atom_type::read_hubbard_input()
                 }
             }
 
-            add_hubbard_orbital(ho.n(), ho.l(), ho.total_initial_occupancy(), coeff[0], coeff[1], &coeff[0], coeff[4],
+            add_hubbard_orbital(ho.n(), ho.l(), ho.total_initial_occupancy(), coeff[0], coeff[1], coeff, coeff[4],
                                 coeff[5], 0.0, initial_occupancy, true);
 
             this->hubbard_correction_ = true;
@@ -1187,10 +1187,11 @@ Atom_type::read_hubbard_input()
         this->hubbard_correction_ = true;
         if (lo_descriptors_hub_.empty()) {
             for (int s = 0; s < (int)ps_atomic_wfs_.size(); s++) {
-                auto& e  = ps_atomic_wfs_[s];
-                int n    = e.n;
-                auto aqn = e.am;
-                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, nullptr, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
+                auto& e                          = ps_atomic_wfs_[s];
+                int n                            = e.n;
+                auto aqn                         = e.am;
+                std::array<double, 6> hub_coef__ = {0., 0., 0., 0., 0., 0.};
+                add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coef__, 0, 0, 0.0, std::vector<double>(2 * aqn.l() + 1, 0),
                                     false);
             }
         } else {
@@ -1203,8 +1204,9 @@ Atom_type::read_hubbard_input()
                 for (int i = 0; i < parameters_.cfg().hubbard().local().size(); i++) {
                     auto ho = parameters_.cfg().hubbard().local(i);
                     if ((ho.atom_type() == this->label()) && ((ho.n() != n) || (ho.l() != aqn.l()))) {
+                        std::array<double, 6> hub_coeff__ = {0., 0., 0., 0., 0., 0.};
                         // we add it to the list but we only use it for the orthogonalization procedure
-                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, nullptr, 0, 0, 0.0,
+                        add_hubbard_orbital(n, aqn.l(), 0, 0, 0, hub_coeff__, 0, 0, 0.0,
                                             std::vector<double>(2 * aqn.l() + 1, 0), false);
                         break;
                     }
@@ -1215,7 +1217,7 @@ Atom_type::read_hubbard_input()
 }
 
 void
-Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, const double* hub_coef__,
+Atom_type::add_hubbard_orbital(int n__, int l__, double occ__, double U, double J, std::array<double, 6> hub_coef__,
                                double alpha__, double beta__, double J0__, std::vector<double> initial_occupancy__,
                                const bool use_for_calculations__)
 {
