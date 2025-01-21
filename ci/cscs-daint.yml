@@ -132,7 +132,6 @@ build vdwxc cuda image:
     SLURM_CPU_BIND: 'socket'
     SLURM_JOB_NUM_NODES: 1
     SLURM_UNBUFFEREDIO: ''
-    SLURM_MPI: "pmi2"
     SLURM_WAIT: 0
     ENROOT_LIBRARY_PATH: /capstor/scratch/cscs/fmohamed/enrootlibn
 
