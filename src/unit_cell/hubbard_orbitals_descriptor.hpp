@@ -202,9 +202,10 @@ class hubbard_orbital_descriptor
 
     /// Constructor.
     hubbard_orbital_descriptor(const int n__, const int l__, const int orbital_index__, const double occ__,
-                               const double J__, const double U__, const double* hub_coef__, const double alpha__,
-                               const double beta__, const double J0__, std::vector<double> initial_occupancy__,
-                               Spline<double> f__, bool use_for_calculations__, int idx_wf__)
+                               const double J__, const double U__, const std::array<double, 6> hub_coef__,
+                               const double alpha__, const double beta__, const double J0__,
+                               std::vector<double> initial_occupancy__, Spline<double> f__, bool use_for_calculations__,
+                               int idx_wf__)
         : n_(n__)
         , l_(l__)
         , use_for_calculation_(use_for_calculations__)
@@ -218,13 +219,11 @@ class hubbard_orbital_descriptor
         , initial_occupancy_(initial_occupancy__)
         , idx_wf_(idx_wf__)
     {
-        if (hub_coef__) {
-            for (int s = 0; s < 4; s++) {
-                hubbard_coefficients_[s] = hub_coef__[s];
-            }
-
-            initialize_hubbard_matrix();
+        for (int s = 0; s < 4; s++) {
+            hubbard_coefficients_[s] = hub_coef__[s];
         }
+
+        initialize_hubbard_matrix();
     }
 
     ~hubbard_orbital_descriptor()

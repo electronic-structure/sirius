@@ -597,10 +597,10 @@ generate_potential(Hubbard_matrix const& om__, Hubbard_matrix& um__)
         }
     }
     if (env::print_checksum()) {
-       print_checksum("om_local", om__.local_checksum(), RTE_OUT(ctx.out()));
-       print_checksum("om_nonlocal", om__.nonlocal_checksum(), RTE_OUT(ctx.out()));
-       print_checksum("um_local", um__.local_checksum(), RTE_OUT(ctx.out()));
-       print_checksum("um_nonlocal", um__.nonlocal_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("om_local", om__.local_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("om_nonlocal", om__.nonlocal_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("um_local", um__.local_checksum(), RTE_OUT(ctx.out()));
+        print_checksum("um_nonlocal", um__.nonlocal_checksum(), RTE_OUT(ctx.out()));
     }
 }
 
