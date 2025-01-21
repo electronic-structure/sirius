@@ -7,14 +7,15 @@ stages:
   - test
 
 build base cuda image:
-  extends: .container-builder-dynamic-name
+  extends: [.dynamic-image-name, .container-builder-cscs-gh200]
   stage: baseimage
   timeout: 10h
   variables:
+    SLURM_TIMELIMIT: 600
     DOCKERFILE: ci/baseimage.cuda.Dockerfile
     WATCH_FILECHANGES: ci/baseimage.cuda.Dockerfile
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base/sirius-ci
-    DOCKER_BUILD_ARGS: '["CUDA_ARCH=60"]'
+    DOCKER_BUILD_ARGS: '["CUDA_ARCH=90"]'
 
 build base rocm image:
   extends: .container-builder-dynamic-name
@@ -27,18 +28,8 @@ build base rocm image:
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base/sirius-ci
     DOCKER_BUILD_ARGS: '["ROCM_ARCH=gfx90a"]'
 
-build cuda image mkl:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-cuda-mkl-mpich"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
-
 build cuda image:
-  extends: .container-builder
+  extends: [.container-builder-cscs-gh200]
   needs: ["build base cuda image"]
   stage: build
   variables:
@@ -58,28 +49,28 @@ build rocm image:
     ENVPATH: "/sirius-env-rocm"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
-build elpa cuda image:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-elpa"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+# build elpa cuda image:
+#   extends: .container-builder-cscs-gh200
+#   needs: ["build base cuda image"]
+#   stage: build
+#   variables:
+#     DOCKERFILE: ci/build.Dockerfile
+#     PERSIST_IMAGE_NAME: discard
+#     ENVPATH: "/sirius-env-elpa"
+#     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
-build sequential eigen-solver cuda image:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-cuda-sequential"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+# build sequential eigen-solver cuda image:
+#   extends: .container-builder-cscs-gh200
+#   needs: ["build base cuda image"]
+#   stage: build
+#   variables:
+#     DOCKERFILE: ci/build.Dockerfile
+#     PERSIST_IMAGE_NAME: discard
+#     ENVPATH: "/sirius-env-cuda-sequential"
+#     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build fp32 cuda image:
-  extends: .container-builder
+  extends: .container-builder-cscs-gh200
   needs: ["build base cuda image"]
   stage: build
   variables:
@@ -89,7 +80,7 @@ build fp32 cuda image:
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 build vdwxc cuda image:
-  extends: .container-builder
+  extends: .container-builder-cscs-gh200
   needs: ["build base cuda image"]
   stage: build
   variables:
@@ -99,39 +90,28 @@ build vdwxc cuda image:
     ENVPATH: "/sirius-env-vdwxc-cuda"
     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
-build nlcg image:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-nlcg"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+# build nlcg image:
+#   extends: .container-builder-cscs-gh200
+#   needs: ["build base cuda image"]
+#   stage: build
+#   variables:
+#     DOCKERFILE: ci/build.Dockerfile
+#     PERSIST_IMAGE_NAME: discard
+#     ENVPATH: "/sirius-env-nlcg"
+#     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
-build clang image:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    # reuse openblas, libxc and spfft from gcc build
-    ENVPATH: "/sirius-env-clang"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
-
-build openmpi image:
-  extends: .container-builder
-  needs: ["build base cuda image"]
-  stage: build
-  variables:
-    DOCKERFILE: ci/build.Dockerfile
-    PERSIST_IMAGE_NAME: discard
-    ENVPATH: "/sirius-env-openmpi"
-    DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
+# build openmpi image:
+#   extends: .container-builder
+#   needs: ["build base cuda image"]
+#   stage: build
+#   variables:
+#     DOCKERFILE: ci/build.Dockerfile
+#     PERSIST_IMAGE_NAME: discard
+#     ENVPATH: "/sirius-env-openmpi"
+#     DOCKER_BUILD_ARGS: '["BASE_IMAGE=${BASE_IMAGE}", "ENVPATH=$ENVPATH"]'
 
 .run_tests:
-  extends: .container-runner-daint-gpu
+  extends: .container-runner-daint-gh200
   needs: ["build cuda image"]
   stage: test
   script:
@@ -144,16 +124,16 @@ build openmpi image:
       fi
   image: $CSCS_REGISTRY_PATH/sirius/sirius-ci:$CI_COMMIT_SHA
   variables:
-    CRAY_CUDA_MPS: 1
+    CRAY_CUDA_MPS: 'YES'
     GIT_STRATEGY: none
-    MPICH_MAX_THREAD_SAFETY: multiple
     CSCS_REGISTRY_LOGIN: 'YES'
     PULL_IMAGE: 'YES'
     SLURM_HINT: nomultithread
+    SLURM_CPU_BIND: 'socket'
     SLURM_JOB_NUM_NODES: 1
     SLURM_UNBUFFEREDIO: ''
     SLURM_WAIT: 0
-
+    ENROOT_LIBRARY_PATH: /capstor/scratch/cscs/fmohamed/enrootlibn
 
 
 gpu serial:
@@ -212,7 +192,7 @@ cpu band parallel:
     USE_MPI: 'YES'
 
 python:
-  extends: .container-runner-daint-gpu
+  extends: .container-runner-daint-gh200
   needs: ["build cuda image"]
   stage: test
   script:
@@ -235,7 +215,6 @@ python:
     SLURM_UNBUFFEREDIO: ''
     SLURM_WAIT: 0
     OMP_NUM_THREADS: 3
-    SLURM_CONSTRAINT: gpu
     SLURM_CPU_BIND: sockets
     SLURM_CPUS_PER_TASK: 3
     SLURM_NTASKS: 1
