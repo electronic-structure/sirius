@@ -15,6 +15,12 @@
 #define __XC_FUNCTIONAL_HPP__
 
 #include <xc.h>
+/* libxc >= 7 split the functional definition in a different file from xc.h */
+
+#if (XC_MAJOR_VERSION >= 7)
+#include <xc_funcs.h>
+#endif
+
 #include <string.h>
 #include "core/r3/r3.hpp"
 #include "xc_functional_base.hpp"
