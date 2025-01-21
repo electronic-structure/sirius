@@ -192,7 +192,7 @@ cpu band parallel:
     USE_MPI: 'YES'
 
 python:
-  extends: .container-runner-daint-gpu
+  extends: .container-runner-daint-gh200
   needs: ["build cuda image"]
   stage: test
   script:
