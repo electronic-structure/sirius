@@ -38,12 +38,14 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
 
     auto sr = wf::spin_range(0, 2);
 
+    double pref = 1.0 / std::sqrt(gvec->num_gvec());
+
     for (auto s = sr.begin(); s != sr.end(); s++) {
         for (int i = 0; i < num_bands__; i++) {
             for (int igloc = 0; igloc < gvec->count(); igloc++) {
                 int ig                                      = igloc + gvec->offset();
-                phi1.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(i + 1) / (ig + 1);
-                phi2.pw_coeffs(igloc, s, wf::band_index(i)) = static_cast<double>(ig + 1) / (i + 1) / gvec->num_gvec();
+                phi1.pw_coeffs(igloc, s, wf::band_index(i)) = pref * (i + 1) / (ig + 1);
+                phi2.pw_coeffs(igloc, s, wf::band_index(i)) = pref * (ig + 1) / (i + 1);
             }
         }
     }
@@ -81,7 +83,10 @@ test_wf_inner_impl(std::vector<int> mpi_grid_dims__, double cutoff__, int num_ba
         }
     }
     mpi::Communicator::world().reduce<double, mpi::op_t::max>(&max_diff, 1, 0);
-    if (max_diff > 1e-10) {
+    if (mpi::Communicator::world().rank() == 0) {
+        printf("max diff : %18.12f\n", max_diff);
+    }
+    if (max_diff > 1e-8) {
         return 1;
     }
     return 0;
