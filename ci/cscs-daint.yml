@@ -18,7 +18,7 @@ build base uenv gh200:
 
 
 build sirius cuda:
-  extends: .uenv-runner
+  extends: .uenv-runner-daint-gh200
   stage: build
   needs: "build base uenv gh200"
   artifacts:
