@@ -7,7 +7,7 @@ stages:
   - test
 
 build base uenv gh200:
-  extends: .uenv-builder
+  extends: .uenv-builder-daint-gh200
   stage: baseimage
   timeout: 2h
   variables:

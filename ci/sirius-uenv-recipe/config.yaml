@@ -1,7 +1,6 @@
-name: prgenv-gnu
+name: sirius-uenv-base
 spack:
   commit: releases/v0.23
   repo: https://github.com/spack/spack.git
 store: /user-environment
-description: GNU Compiler toolchain with cray-mpich, Python, CMake and other development tools.
-
+description: SIRIUS dependencies for SIRIUS CI
