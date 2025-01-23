@@ -22,7 +22,8 @@ build sirius cuda:
   stage: build
   needs: "build base uenv gh200"
   artifacts:
-    - builddir
+    paths:
+      - builddir
   script:
     - git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json)
     - git -C spack checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
