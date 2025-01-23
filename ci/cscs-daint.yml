@@ -16,11 +16,11 @@ build base uenv gh200:
     UENV_RECIPE: ci/sirius-uenv-recipe/
     UENV_VERSION: 1
 
-
 build sirius cuda:
   extends: .uenv-runner-daint-gh200
   stage: build
   needs: ["build base uenv gh200"]
+  image: sirius-gh200/1
   artifacts:
     paths:
       - builddir
