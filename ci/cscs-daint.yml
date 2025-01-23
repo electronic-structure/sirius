@@ -25,7 +25,9 @@ build sirius cuda:
     paths:
       - builddir
   script:
-    - git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json)
-    - git -C spack checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
-    - source ./spack/share/spack/setup-env.sh
-    - ci/build-cuda.sh
+    - |
+      #
+      git clone --filter=tree:0 $(jq -r .spack.repo /user-environment/meta/configure.json)
+      git -C spack checkout $(jq -r .spack.commit /user-environment/meta/configure.json)
+      source ./spack/share/spack/setup-env.sh
+      ./ci/build-cuda.sh
