@@ -13,6 +13,7 @@ build base uenv gh200:
   variables:
     UENV_NAME: sirius-gh200
     WATCH_FILECHANGES: ci/sirius-uenv-recipe/
+    UENV_VERSION: 1
 
 # build cuda image:
 #   extends: .container-builder
