@@ -100,7 +100,7 @@ diagonalize(Hamiltonian0<T> const& H0__, K_point_set& kset__, double itsol_tol__
         bool shorten{true};
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             bool do_print{true};
-	    if (kset__.num_kpoints() > 10) {
+            if (kset__.num_kpoints() > 10) {
                 if (ik >= 5 && ik < kset__.num_kpoints() - 5) {
                     do_print = false;
                 }
