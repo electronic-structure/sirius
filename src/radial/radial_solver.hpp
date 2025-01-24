@@ -1020,7 +1020,7 @@ class Bound_state : public Radial_solver
                                            }
                                            denu = (s != sp) ? denu * alpha0__ : denu * alpha1__;
                                            /* do not allow big step in energy */
-					   denu = std::min(denu, 10.0);	
+                                           denu = std::min(denu, 10.0);
                                            enu += s * denu;
                                            return false;
                                        });
@@ -1039,7 +1039,7 @@ class Bound_state : public Radial_solver
         int nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
 
         sout << "firt pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
-        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl; 
+        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
 
         /* 2nd pass: refine by bisection */
         enu_ = integrate_forward_until(rel__, (e1 + e2) / 2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
@@ -1055,14 +1055,14 @@ class Bound_state : public Radial_solver
 
         nn1 = integrate_forward_gsl<relativity_t::dirac>(e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
         nn2 = integrate_forward_gsl<relativity_t::dirac>(e2, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true);
-	sout << "second pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
-        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl; 
+        sout << "second pass: e_bottom = " << e1 << ", e_top = " << e2 << std::endl;
+        sout << "number of nodes: " << nn1 << " " << nn2 << std::endl;
 
         /* final choice for enu: bottom enery of the refined interval */
         enu_ = integrate_forward_until(rel__, e1, l_, k_, chi_p, chi_q, p, dpdr_, q, dqdr, true,
                                        [](int iter, int nn, double& enu) { return true; });
 
-	sout << "final value for enu = " << enu_ << std::endl;
+        sout << "final value for enu = " << enu_ << std::endl;
 
         /* compute r * u'(r) */
         for (int i = 0; i < num_points(); i++) {
@@ -1098,27 +1098,28 @@ class Bound_state : public Radial_solver
         for (int i = 0; i < np - 1; i++) {
             if (p_(i) * p_(i + 1) < 0.0) {
                 nn++;
-		xn.push_back(radial_grid(i));
+                xn.push_back(radial_grid(i));
             }
         }
 
         if (nn != (n_ - l_ - 1)) {
-	    nlohmann::json dict;
-            dict["x"] = radial_grid().values();
-            dict["p"] = p_.values();
+            nlohmann::json dict;
+            dict["x"]  = radial_grid().values();
+            dict["p"]  = p_.values();
             dict["ve"] = this->ve_.values();
-            dict["z"] = this->zn_;
-            write_json_to_file(dict, "radial_solver_zn" + std::to_string(this->zn_) + 
-		"_n" + std::to_string(this->n_) + "_l" + std::to_string(this->l_) + "_k" + std::to_string(this->k_) + ".json");
+            dict["z"]  = this->zn_;
+            write_json_to_file(dict, "radial_solver_zn" + std::to_string(this->zn_) + "_n" + std::to_string(this->n_) +
+                                             "_l" + std::to_string(this->l_) + "_k" + std::to_string(this->k_) +
+                                             ".json");
 
             sout << "n = " << n_ << std::endl
                  << "l = " << l_ << std::endl
                  << "k = " << k_ << std::endl
                  << "wrong number of nodes : " << nn << " instead of " << (n_ - l_ - 1) << std::endl;
-	    sout << "node location : ";
-	    for (auto e : xn) {
-		sout << e << " ";
-	    }
+            sout << "node location : ";
+            for (auto e : xn) {
+                sout << e << " ";
+            }
             sout << std::endl << "last value of ve : " << this->ve_(np - 1);
             RTE_THROW(sout);
         }
@@ -1146,7 +1147,7 @@ class Bound_state : public Radial_solver
         , rdudr_(radial_grid__)
         , rho_(radial_grid__)
     {
-	try {
+        try {
             solve(rel__, enu_start__, alpha0__, alpha1__);
         } catch (std::exception const& e) {
             std::stringstream s;
