@@ -350,7 +350,7 @@ Atom_symmetry_class::check_lo_linear_independence(double tol__) const
 
     stdevp->solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
-    if (std::abs(loprod_eval[0]) < tol__) {
+    if (loprod_eval[0] < tol__) {
         std::printf("\n");
         std::printf("local orbitals for atom symmetry class %i are almost linearly dependent\n", id_);
         std::printf("local orbitals overlap matrix:\n");
