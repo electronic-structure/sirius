@@ -489,7 +489,7 @@ Atom_symmetry_class::find_enu(relativity_t rel__)
     int ierr{0};
     #pragma omp parallel for reduction(+:ierr)
     for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
-        auto rsd       = rs_with_auto_enu[i];
+        auto rsd = rs_with_auto_enu[i];
         try {
             double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(),
                                         spherical_potential_, rsd->enu, rsd->auto_enu)
