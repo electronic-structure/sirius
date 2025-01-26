@@ -17,3 +17,6 @@ spack -e ./spack-env add $SPEC cuda_arch==$CUDA_ARCH
 spack -e ./spack-env develop -p . sirius@develop
 spack -e ./spack-env concretize
 spack -e ./spack-env install
+builddir=$(spack -e ./spack-env location -b sirius)
+# create a symlink to spack build directory (keep in artifacts)
+ln -s $builddir builddir
