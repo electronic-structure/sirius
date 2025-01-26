@@ -25,6 +25,9 @@ build sirius cuda:
   artifacts:
     paths:
       - builddir
+  variables:
+    SPEC: sirius +cuda +apps +tests
+    CUDA_ARCH: 90
   script:
     - |
       #
