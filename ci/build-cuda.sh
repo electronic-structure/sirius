@@ -2,6 +2,7 @@
 
 set -xeuo pipefail
 
+export SPACK_SYSTEM_CONFIG_PATH=/user-environment/config
 
 # make sure we keep the stage direcorty
 spack config --scope=user add config:build_stage:$PWD
