@@ -26,7 +26,7 @@ build sirius cuda:
     paths:
       - builddir
   variables:
-    SPEC: sirius +cuda +apps +tests
+    SPEC: sirius@develop +cuda +apps +tests +python
     CUDA_ARCH: 90
   script:
     - |
