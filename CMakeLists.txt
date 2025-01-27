@@ -13,6 +13,8 @@ if(POLICY CMP0104)
   cmake_policy(SET CMP0104 NEW)
 endif()
 
+cmake_policy(SET CMP0144 NEW)
+
 # user variables
 option(SIRIUS_CREATE_PYTHON_MODULE    "create sirius Python module" OFF)
 option(SIRIUS_CREATE_FORTRAN_BINDINGS "build Fortran bindings" ON)
