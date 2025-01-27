@@ -18,7 +18,7 @@ spack -e ./spack-env config add packages:all:variants:+cuda
 spack -e ./spack-env add sirius +cuda +python +tests +apps
 
 # build sirius from source
-spack -e ./spack-env develop -p . sirius@develop
+spack -e ./spack-env develop -p $PWD sirius@develop
 
 # display spack.yaml
 cat ./spack-env/spack.yaml
