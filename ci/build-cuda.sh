@@ -11,7 +11,8 @@ spack env create -d ./spack-env
 # add local repository with current sirius recipe
 spack -e ./spack-env repo add ./ci/sirius-uenv-recipe/repo
 
-spack -e ./spack-env add $SPEC #cuda_arch==$CUDA_ARCH
+spack -e ./spack-env config add packages:all:variants:cuda_arch=${CUDA_ARCH}
+spack -e ./spack-env config add packages:all:variants:+cuda
 
 cat ./spack-env/spack.yaml
 
