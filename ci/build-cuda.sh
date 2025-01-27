@@ -13,6 +13,8 @@ spack -e ./spack-env repo add ./ci/sirius-uenv-recipe/repo
 
 spack -e ./spack-env add $SPEC #cuda_arch==$CUDA_ARCH
 
+cat ./spack-env/spack.yaml
+
 # build sirius from source
 spack -e ./spack-env develop -p . sirius@develop
 spack -e ./spack-env concretize
