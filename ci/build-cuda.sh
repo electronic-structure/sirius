@@ -14,12 +14,16 @@ spack -e ./spack-env repo add ./ci/sirius-uenv-recipe/repo
 spack -e ./spack-env config add packages:all:variants:cuda_arch=${CUDA_ARCH}
 spack -e ./spack-env config add packages:all:variants:+cuda
 
-cat ./spack-env/spack.yaml
 
 # build sirius from source
 spack -e ./spack-env develop -p . sirius@develop
+
+# display spack.yaml
+cat ./spack-env/spack.yaml
+
 spack -e ./spack-env concretize
 spack -e ./spack-env install
+
 builddir=$(spack -e ./spack-env location -b sirius)
 # create a symlink to spack build directory (keep in artifacts)
 ln -s $builddir builddir
